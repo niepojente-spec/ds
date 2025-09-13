@@ -1,89 +1,33 @@
 <!doctype html>
 <html lang="pl">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>DS • Logowanie</title>
-<style>
-:root{ --bg:#0b0f12; --panel:#11161b; --text:#e9f0f5; --muted:#8ea0ae; --acc:#22c55e; --stroke:#1a2330; }
-*{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
-.wrapper{min-height:100%;display:grid;place-items:center;padding:24px}
-.card{width:min(560px,95vw);background:linear-gradient(180deg,var(--panel),#0e141a);border:1px solid var(--stroke);border-radius:16px;padding:20px;box-shadow:0 20px 40px rgba(0,0,0,.35)}
-h1{margin-top:0}
-p,li{color:var(--muted)}
-input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--stroke);background:#0a1015;color:var(--text)}
-.btn{display:inline-block;margin-top:10px;background:var(--acc);color:#07130c;padding:.7rem 1rem;border-radius:.6rem;font-weight:800;border:0;cursor:pointer}
-.btn.ghost{background:transparent;border:1px solid var(--stroke);color:var(--text)}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.note{font-size:.9rem;color:var(--muted)}
-.err{color:#ff9a9a}
-.succ{color:#8bffa8}
-</style>
+  <meta charset="utf-8" />
+  <title>Logowanie — Sklep Discord</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="./assets/style.css" />
 </head>
 <body>
-<div class="wrapper">
-  <div class="card">
-    <h1>🔐 Logowanie przez kod DM</h1>
-    <ol>
-      <li>Na serwerze Discord wejdź na kanał <b>#zaloguj</b> i kliknij <b>Zaloguj</b>.</li>
-      <li>Odbierz od bota prywatną wiadomość z kodem (format: <code>XXXX-XXXX-XXXX-XXXX</code>).</li>
-      <li>Wpisz kod niżej i zatwierdź.</li>
-    </ol>
-    <div class="row">
-      <input id="code" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="one-time-code" />
-      <button id="btn" class="btn">Zaloguj</button>
-      <a class="btn ghost" href="./shop.html">⟵ Sklep</a>
+  <header class="topbar">
+    <div class="brand">DS • Logowanie</div>
+    <nav class="spacer"></nav>
+    <a class="btn" href="./index.html">Sklep</a>
+  </header>
+
+  <main class="container center">
+    <div class="login-card">
+      <ol>
+        <li>Na serwerze Discord wejdź na kanał <strong>#zaloguj</strong> i kliknij przycisk <em>Zaloguj</em>.</li>
+        <li>Sprawdź DM od bota z kodem (format: <code>XXXX-XXXX-XXXX-XXXX</code>).</li>
+        <li>Wpisz kod niżej.</li>
+      </ol>
+      <div class="row">
+        <input id="otpInput" placeholder="XXXX-XXXX-XXXX-XXXX" />
+        <button id="otpBtn" class="btn primary">Zaloguj</button>
+      </div>
+      <div id="loginMsg" class="muted"></div>
     </div>
-    <p id="msg" class="note"></p>
-  </div>
-</div>
+  </main>
 
-<script>
-/* ------ USTAW SWÓJ PUBLICZNY API BASE URL (HTTPS) ------ */
-const API_BASE_URL = "https://api.sparkedservers.us";
-
-/* automatyczne uppercase + validacja */
-const code = document.getElementById('code');
-code.addEventListener('input', ()=>{
-  code.value = code.value.replace(/\s+/g,'').toUpperCase();
-});
-const msg = document.getElementById('msg');
-const btn = document.getElementById('btn');
-
-btn.addEventListener('click', doLogin);
-code.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
-
-async function doLogin(){
-  const val = code.value.trim();
-  if(!/^[A-Z0-9]{4}(-[A-Z0-9]{4}){3}$/.test(val)){ show('Wpisz kod w formacie XXXX-XXXX-XXXX-XXXX','err'); return; }
-  btn.disabled = true; show('Logowanie…','note');
-  try{
-    const r = await fetch(API_BASE_URL + '/api/login/otp', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({code: val})
-    });
-    const data = await r.json();
-    if(!r.ok || !data.ok){ throw new Error(data?.detail || 'Błąd logowania'); }
-    // zapis JWT
-    localStorage.setItem('jwt', data.token);
-    show('Zalogowano. Przekierowuję…','succ');
-    // powrót do sklepu (albo do miejsca, które zapamiętałeś)
-    const back = localStorage.getItem('postLoginReturn') || './shop.html';
-    localStorage.removeItem('postLoginReturn');
-    location.href = back;
-  }catch(e){
-    show('Błąd logowania: ' + (e.message||'spróbuj ponownie'), 'err');
-  }finally{
-    btn.disabled = false;
-  }
-}
-
-function show(t,cls){
-  msg.className='note ' + (cls||'');
-  msg.textContent = t;
-}
-</script>
+  <script src="./assets/app.js"></script>
 </body>
 </html>
