@@ -1,109 +1,84 @@
 <!doctype html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Logowanie — Sklep Discord</title>
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif; margin: 40px auto; max-width: 560px; }
-    .card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; box-shadow: 0 1px 6px rgba(0,0,0,.04); }
-    input { padding: 12px; font-size: 16px; width: 100%; border-radius: 10px; border: 1px solid #d1d5db; }
-    button { padding: 12px 16px; font-size: 16px; border-radius: 10px; border: 0; cursor: pointer; }
-    .row { display: flex; gap: 10px; margin-top: 12px; }
-    .ok { color: #065f46; }
-    .err { color: #b91c1c; }
-    .user { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
-    .avatar { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #e5e7eb; object-fit: cover; }
-    .hint { color: #6b7280; font-size: 14px; }
-    .muted { color: #6b7280; }
-  </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Sklep • DS</title>
+  <link rel="stylesheet" href="./shop.css"/>
 </head>
 <body>
-  <h1>Logowanie przez kod DM</h1>
-  <div class="card">
-    <ol>
-      <li>Na serwerze Discord wejdź na kanał <b>#zaloguj</b> i kliknij przycisk <b>Zaloguj</b>.</li>
-      <li>Sprawdź prywatną wiadomość od bota z kodem (format: <code>XXXX-XXXX-XXXX-XXXX</code>).</li>
-      <li>Wpisz kod poniżej.</li>
-    </ol>
+<canvas id="bg"></canvas>
 
-    <div class="row">
-      <input id="code" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="one-time-code" />
-      <button id="btn">Zaloguj</button>
+<header class="topbar">
+  <div class="left">
+    <h1>DS • Sklep</h1>
+  </div>
+  <div class="right">
+    <button id="adminPanelBtn" class="ghost" hidden>Panel admina</button>
+    <div id="userBox" class="user">
+      <img id="userAvatar" src="" alt="" />
+      <span id="userName">Gość</span>
     </div>
-    <p id="msg" class="hint"></p>
+    <a class="btn" href="../index.html#login">Zaloguj</a>
+    <button class="btn" id="cartBtn">🛒 <span id="cartCount">0</span></button>
+  </div>
+</header>
 
-    <div id="profile" style="display:none">
-      <div class="user">
-        <img id="avatar" class="avatar" alt="">
-        <div>
-          <div id="username"></div>
-          <div id="userid" class="muted"></div>
-        </div>
-      </div>
-      <p class="hint">Token sesji zapisaliśmy w Twojej przeglądarce (localStorage). Na razie służy tylko do potwierdzenia logowania.</p>
+<main>
+  <section class="grid" id="products"></section>
+</main>
+
+<!-- Modal BUY -->
+<div id="buyModal" class="modal hidden">
+  <div class="modal__content">
+    <h3 id="buyTitle">Kup</h3>
+    <div id="buyOptions"></div>
+    <div class="modal__actions">
+      <button class="btn ghost" id="buyCancel">Anuluj</button>
+      <button class="btn" id="buyAddToCart">Dodaj do koszyka</button>
     </div>
   </div>
+</div>
 
-  <script>
-    // USTAW: publiczny URL Twojego API (SparkedHost, reverse proxy lub domena)
-    const API_BASE_URL = "https://api.sparkedservers.us"; // <- podmień!
+<!-- Modal CART -->
+<div id="cartModal" class="modal hidden">
+  <div class="modal__content">
+    <h3>Twój koszyk</h3>
+    <div id="cartList"></div>
+    <textarea id="orderNote" placeholder="Dodatkowa notatka..."></textarea>
+    <div class="modal__actions">
+      <button class="btn ghost" id="cartClose">Zamknij</button>
+      <button class="btn pulse" id="cartCheckout">Kup</button>
+    </div>
+  </div>
+</div>
 
-    const codeInput = document.getElementById('code');
-    const btn = document.getElementById('btn');
-    const msg = document.getElementById('msg');
-    const profile = document.getElementById('profile');
-    const username = document.getElementById('username');
-    const userid = document.getElementById('userid');
-    const avatar = document.getElementById('avatar');
+<!-- Panel admina -->
+<div id="adminPanel" class="drawer hidden">
+  <div class="drawer__head">
+    <h3>Panel admina</h3>
+    <button id="adminClose" class="ghost">x</button>
+  </div>
+  <form id="productForm">
+    <label>ID (unikalne): <input name="id" required/></label>
+    <label>Tytuł: <input name="title" required/></label>
+    <label>Opis: <textarea name="description"></textarea></label>
+    <label>Obrazek (URL): <input name="imageUrl"/></label>
+    <label>Tagi (po przecinku): <input name="tags"/></label>
 
-    btn.addEventListener('click', async () => {
-      const code = codeInput.value.trim();
-      msg.textContent = "Logowanie...";
-      msg.className = "hint";
+    <h4>Warianty</h4>
+    <div id="optionsWrap"></div>
+    <button type="button" id="addOption" class="ghost">+ wariant</button>
 
-      try {
-        const r = await fetch(API_BASE_URL + "/api/login/otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code })
-        });
-        const j = await r.json();
-        if (!r.ok || !j.ok) {
-          throw new Error(j.detail || j.error || "Nieprawidłowy lub wygasły kod");
-        }
-        // Zapis tokena (opcjonalnie użyj sessionStorage)
-        localStorage.setItem("auth_token", j.token);
-        localStorage.setItem("user", JSON.stringify(j.user));
+    <div class="drawer__actions">
+      <button type="submit" class="btn">Zapisz produkt</button>
+    </div>
+  </form>
+</div>
 
-        msg.textContent = "Zalogowano pomyślnie ✅";
-        msg.className = "ok";
-        username.textContent = j.user.username;
-        userid.textContent = "ID: " + j.user.id;
-        avatar.src = j.user.avatar || "";
-        avatar.alt = j.user.username;
-        profile.style.display = "block";
-      } catch (e) {
-        msg.textContent = "Błąd: " + e.message;
-        msg.className = "err";
-        profile.style.display = "none";
-      }
-    });
-
-    // Jeśli już mamy token, pokaż profil
-    (function bootstrap(){
-      const u = localStorage.getItem("user");
-      if (u) {
-        const j = JSON.parse(u);
-        username.textContent = j.username;
-        userid.textContent = "ID: " + j.id;
-        avatar.src = j.avatar || "";
-        avatar.alt = j.username;
-        profile.style.display = "block";
-        msg.textContent = "Masz aktywną sesję lokalnie.";
-        msg.className = "ok";
-      }
-    })();
-  </script>
+<script>
+  const API_BASE_URL = "https://api.sparkedservers.us"; // twój HTTPS proxy
+</script>
+<script src="./shop.js"></script>
 </body>
 </html>
