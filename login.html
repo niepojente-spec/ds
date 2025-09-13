@@ -7,25 +7,27 @@
   <link rel="stylesheet" href="./assets/style.css" />
 </head>
 <body>
+  <canvas id="bg"></canvas>
+
   <header class="topbar">
     <div class="container">
       <div class="brand">DS • Logowanie</div>
-      <nav class="actions">
-        <a class="btn ghost" href="./index.html">Sklep</a>
-      </nav>
+      <div class="grow"></div>
+      <a class="btn ghost" href="./">Sklep</a>
     </div>
   </header>
 
-  <main class="container center">
-    <div class="login-card">
-      <ol>
-        <li>Na kanale <strong>#zaloguj</strong> kliknij przycisk <em>Zaloguj</em>.</li>
-        <li>Sprawdź DM od bota z kodem (XXXX-XXXX-XXXX-XXXX).</li>
-        <li>Wpisz kod niżej.</li>
+  <main class="container content center">
+    <div class="panel narrow">
+      <h2>Logowanie przez kod DM</h2>
+      <ol class="muted">
+        <li>Na serwerze Discord wpisz komendę <code>/login</code> lub kliknij przycisk w kanale #zaloguj.</li>
+        <li>Odbierz DM od bota z <strong>kodem</strong> i linkiem do tej strony.</li>
+        <li>Wpisz kod poniżej i kliknij <em>Zaloguj</em>.</li>
       </ol>
-      <div class="row">
+      <div class="row grid2">
         <input id="otpInput" placeholder="XXXX-XXXX-XXXX-XXXX" />
-        <button id="otpBtn" class="btn primary">Zaloguj</button>
+        <button id="otpBtn" class="btn">Zaloguj</button>
       </div>
       <div id="loginMsg" class="muted"></div>
     </div>
