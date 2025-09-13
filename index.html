@@ -7,54 +7,47 @@
   <link rel="stylesheet" href="./assets/style.css" />
 </head>
 <body>
-  <canvas id="bg"></canvas>
-
   <header class="topbar">
-    <div class="container">
-      <div class="brand">DS • Sklep</div>
-      <div class="grow"></div>
-      <div id="userBox" class="chip">Gość</div>
-      <a class="btn ghost" id="loginLink" href="./login.html">Zaloguj</a>
-      <button id="cartBtn" class="btn pill">
-        <span>🛒</span><b id="cartCount">0</b>
-      </button>
-    </div>
+    <div class="brand">DS • Sklep</div>
+    <nav class="grow"></nav>
+    <div id="userBox" class="userbox">Gość</div>
+    <a id="loginBtn" class="btn ghost" href="./login.html">Zaloguj</a>
+    <button id="cartBtn" class="btn cart">🛒 <span id="cartCount">0</span></button>
   </header>
 
-  <main class="container content">
-    <!-- Panel admina -->
-    <section id="adminPanel" class="admin hidden">
+  <canvas id="stars"></canvas>
+
+  <main class="container">
+    <section id="adminPanel" hidden>
       <h2>Panel admina</h2>
-      <form id="productForm" class="panel">
+
+      <form id="productForm" class="card">
         <div class="row">
           <label>ID</label>
-          <input id="p_id" placeholder="unikalne-id" required>
+          <input id="p_id" required placeholder="unikalne-id" />
         </div>
         <div class="row">
           <label>Tytuł</label>
-          <input id="p_title" placeholder="nazwa produktu" required>
+          <input id="p_title" required placeholder="nazwa produktu" />
         </div>
-        <div class="row grid2">
-          <div>
-            <label>Obrazek (URL)</label>
-            <input id="p_image" placeholder="https://...">
-          </div>
-          <div>
-            <label>lub Upload</label>
-            <input id="p_file" type="file" accept="image/*">
-          </div>
+        <div class="row">
+          <label>Obrazek (URL)</label>
+          <input id="p_image" placeholder="https://..." />
+        </div>
+        <div class="row">
+          <label>lub Upload</label>
+          <input id="p_file" type="file" accept="image/*" />
         </div>
         <div class="row">
           <label>Opis</label>
-          <textarea id="p_desc" placeholder="krótki opis..."></textarea>
+          <textarea id="p_desc" placeholder="krótki opis…"></textarea>
         </div>
 
-        <h3>Warianty / ceny</h3>
         <div id="optList"></div>
-        <button id="addOpt" type="button" class="btn ghost">+ Opcja (np. 1 mies.)</button>
+        <button type="button" id="addOpt" class="btn small">+ Opcja (np. 1 mies.)</button>
 
         <div class="actions">
-          <button type="submit" class="btn">Zapisz produkt</button>
+          <button class="btn primary" type="submit">Zapisz produkt</button>
         </div>
       </form>
     </section>
@@ -65,23 +58,24 @@
     </section>
   </main>
 
-  <!-- Modal koszyka -->
-  <div id="cartModal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-content">
+  <!-- Koszyk -->
+  <div id="cartModal" class="modal" hidden>
+    <div class="modal-body">
       <h3>Twój koszyk</h3>
       <div id="cartList" class="cart-list"></div>
 
-      <div class="paybox">
-        <div class="muted">Metoda płatności:</div>
-        <label><input type="radio" name="pay" value="Płatność A" checked> Płatność A</label>
-        <label><input type="radio" name="pay" value="Płatność B"> Płatność B</label>
-        <label><input type="radio" name="pay" value="Płatność C"> Płatność C</label>
+      <div class="pay">
+        <div class="pay-title">Metoda płatności</div>
+        <label class="radio"><input type="radio" name="pay" value="Płatność A" checked><span>Płatność A</span></label>
+        <label class="radio"><input type="radio" name="pay" value="Płatność B"><span>Płatność B</span></label>
+        <label class="radio"><input type="radio" name="pay" value="Płatność C"><span>Płatność C</span></label>
       </div>
 
-      <div class="total">Razem: <b id="cartTotal">0.00 zł</b></div>
+      <div class="total">Razem: <b id="cartTotal">0.00</b> zł</div>
+
       <div class="actions">
-        <button id="cartCancel" class="btn ghost">Anuluj</button>
-        <button id="cartConfirm" class="btn pulse">Zatwierdź</button>
+        <button id="cartCancel" class="btn">Anuluj</button>
+        <button id="cartConfirm" class="btn primary">Zatwierdź</button>
       </div>
     </div>
   </div>
