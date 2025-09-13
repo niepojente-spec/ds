@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DS • Sklep</title>
+<style>
+:root{
+  --bg:#0b0f12; --card:#11161b; --muted:#8ea0ae; --text:#e9f0f5;
+  --acc:#22c55e; --acc-2:#3b82f6; --danger:#ef4444; --stroke:#1a2330;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue","Noto Sans",Arial}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;border:0}
+.container{max-width:1200px;margin:0 auto;padding:0 16px}
+/* tło */
+#bg{position:fixed;inset:0;z-index:0}
+/* TOPBAR */
+.topbar{position:sticky;top:0;z-index:5;background:rgba(11,15,18,.78);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--stroke)}
+.topbar .container{height:64px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-weight:800;letter-spacing:.3px;font-size:22px;white-space:nowrap}
+.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.user{display:flex;align-items:center;gap:8px;padding:4px 10px;border:1px solid var(--stroke);border-radius:999px;background:#0d141a}
+.user img{width:26px;height:26px;border-radius:50%;object-fit:cover;display:none}
+.btn{background:var(--acc);color:#06110a;padding:.6rem .9rem;border-radius:.6rem;font-weight:700}
+.btn.acc{background:var(--acc)}
+.btn.ghost{background:transparent;border:1px solid var(--stroke);color:var(--text)}
+.btn.pulse{animation:pulse 1.4s infinite}
+/* GRID */
+main{position:relative;z-index:1}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:18px 0}
+/* CARD */
+.card{background:var(--card);border:1px solid var(--stroke);border-radius:16px;overflow:hidden;
+  display:flex;flex-direction:column;transition:transform .15s, box-shadow .15s}
+.card:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.card__img{height:180px;background:#0d1216;display:flex;align-items:center;justify-content:center}
+.card__img img{max-height:100%;max-width:100%;object-fit:contain}
+.card__body{padding:14px;display:flex;flex-direction:column;gap:8px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:.75rem;background:#0c141b;border:1px solid #16202b;padding:2px 8px;border-radius:999px;color:#8db1c6}
+.price{color:var(--acc);font-weight:800}
+/* MODALS */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10}
+.modal.hidden{display:none}
+.modal__content{width:min(560px,94vw);background:#0e141a;border:1px solid #1c2732;border-radius:14px;padding:16px}
+.modal__actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+textarea#orderNote{width:100%;min-height:80px;margin-top:8px;background:#0a1015;border:1px solid var(--stroke);color:var(--text);border-radius:10px;padding:.6rem}
+/* DRAWER (admin) */
+.drawer{position:fixed;right:0;top:0;bottom:0;width:min(420px,96vw);background:#0e141a;border-left:1px solid #1c2732;padding:16px;z-index:15;overflow:auto}
+.drawer.hidden{display:none}
+.drawer__head{display:flex;justify-content:space-between;align-items:center}
+.drawer__actions{margin-top:12px;display:flex;justify-content:flex-end}
+label{display:block;margin:.5rem 0;color:#b7c7d6}
+input,textarea{width:100%;background:#0a1015;border:1px solid var(--stroke);color:var(--text);border-radius:10px;padding:.6rem}
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}
+  70%{box-shadow:0 0 0 16px rgba(34,197,94,0)}
+  100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}
+}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<header class="topbar">
+  <div class="container">
+    <div class="brand">DS • Sklep</div>
+    <nav class="actions">
+      <button id="adminPanelBtn" class="btn ghost" hidden>Panel admina</button>
+      <div id="userBox" class="user">
+        <img id="userAvatar" alt="">
+        <span id="userName">Gość</span>
+      </div>
+      <a class="btn ghost" id="loginBtn" href="./login.html">Zaloguj</a>
+      <button class="btn acc" id="cartBtn">🛒 <span id="cartCount">0</span></button>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <section class="grid" id="products"></section>
+</main>
+
+<!-- Modal BUY -->
+<div id="buyModal" class="modal hidden">
+  <div class="modal__content">
+    <h3 id="buyTitle">Kup</h3>
+    <div id="buyOptions"></div>
+    <div class="modal__actions">
+      <button class="btn ghost" id="buyCancel">Anuluj</button>
+      <button class="btn" id="buyAddToCart">Dodaj do koszyka</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal CART -->
+<div id="cartModal" class="modal hidden">
+  <div class="modal__content">
+    <h3>Twój koszyk</h3>
+    <div id="cartList"></div>
+    <textarea id="orderNote" placeholder="Dodatkowa notatka..."></textarea>
+    <div class="modal__actions">
+      <button class="btn ghost" id="cartClose">Zamknij</button>
+      <button class="btn pulse" id="cartCheckout">Kup</button>
+    </div>
+  </div>
+</div>
+
+<!-- Panel admina -->
+<div id="adminPanel" class="drawer hidden">
+  <div class="drawer__head">
+    <h3>Panel admina</h3>
+    <button id="adminClose" class="ghost">×</button>
+  </div>
+  <form id="productForm">
+    <label>ID (unikalne): <input name="id" required/></label>
+    <label>Tytuł: <input name="title" required/></label>
+    <label>Opis: <textarea name="description"></textarea></label>
+    <label>Obrazek (URL): <input name="imageUrl"/></label>
+    <label>Tagi (po przecinku): <input name="tags"/></label>
+
+    <h4>Warianty</h4>
+    <div id="optionsWrap"></div>
+    <button type="button" id="addOption" class="ghost">+ wariant</button>
+
+    <div class="drawer__actions">
+      <button type="submit" class="btn">Zapisz produkt</button>
+    </div>
+  </form>
+</div>
+
+<script>
+/* ------ USTAW SWÓJ PUBLICZNY API BASE URL (HTTPS) ------ */
+const API_BASE_URL = "https://api.sparkedservers.us";
+
+/* ===== Canvas particles ===== */
+(() => {
+  const c = document.getElementById('bg');
+  const ctx = c.getContext('2d'); let w,h,parts=[];
+  const COUNT=140;
+  function resize(){ w=c.width=innerWidth; h=c.height=innerHeight; parts=Array.from({length:COUNT},()=>({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-.5)*.6,vy:(Math.random()-.5)*.6,r:Math.random()*1.5+.2}))}
+  const mouse={x:-1e9,y:-1e9}; addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
+  function step(){ ctx.clearRect(0,0,w,h); ctx.fillStyle='rgba(80,160,255,.8)';
+    for(const p of parts){ const dx=p.x-mouse.x,dy=p.y-mouse.y,d=dx*dx+dy*dy;
+      if(d<9000){ p.vx+=dx*-0.00002; p.vy+=dy*-0.00002 }
+      p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>w) p.vx*=-1; if(p.y<0||p.y>h) p.vy*=-1;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    } requestAnimationFrame(step) }
+  resize(); step(); addEventListener('resize',resize);
+})();
+
+/* ===== Helpers / API ===== */
+const qs=s=>document.querySelector(s);
+const token = ()=> localStorage.getItem('jwt')||null;
+const API = (path,opts={})=>fetch(`${API_BASE_URL}${path}`,{
+  headers:{'Content-Type':'application/json',...(token()?{'Authorization':'Bearer '+token()}: {})},...opts
+}).then(async r=>{ const ct=r.headers.get('content-type')||''; const data=ct.includes('application/json')?await r.json():{};
+  if(!r.ok) throw Object.assign(new Error('HTTP '+r.status),{data}); return data; });
+
+/* ===== Elementy ===== */
+const $products=qs('#products'), buyModal=qs('#buyModal'), cartModal=qs('#cartModal'),
+adminPanel=qs('#adminPanel'), adminPanelBtn=qs('#adminPanelBtn'), cartBtn=qs('#cartBtn'),
+cartCount=qs('#cartCount'), userAvatar=qs('#userAvatar'), userName=qs('#userName');
+
+/* ===== Stan ===== */
+let ME=null, PRODUCTS=[], CART=JSON.parse(localStorage.getItem('cart')||'[]');
+const saveCart=()=>{ localStorage.setItem('cart', JSON.stringify(CART)); cartCount.textContent=CART.reduce((a,b)=>a+(b.qty||0),0); };
+
+/* ===== Init ===== */
+(async function init(){
+  // ME
+  if(token()){
+    try{
+      const m=await API('/api/me'); if(m.ok){ ME=m.user; userName.textContent=ME.username||'Użytkownik';
+        if(ME.avatar){ userAvatar.src=ME.avatar; userAvatar.style.display='block'; }
+        if(ME.is_admin) adminPanelBtn.hidden=false;
+        const loginBtn=document.getElementById('loginBtn'); if(loginBtn) loginBtn.style.display='none';
+      }
+    }catch{}
+  }
+  // Produkty
+  try{ const res=await API('/api/products'); PRODUCTS=res.products||[]; }catch{ PRODUCTS=[]; }
+  renderProducts(); saveCart();
+
+  // UI handlers
+  adminPanelBtn?.addEventListener('click',()=>adminPanel.classList.remove('hidden'));
+  qs('#adminClose').addEventListener('click',()=>adminPanel.classList.add('hidden'));
+  cartBtn.addEventListener('click',()=>{ renderCart(); cartModal.classList.remove('hidden'); });
+  qs('#cartClose').addEventListener('click',()=>cartModal.classList.add('hidden'));
+  qs('#buyCancel').addEventListener('click',()=>buyModal.classList.add('hidden'));
+  qs('#cartCheckout').addEventListener('click',checkout);
+  qs('#addOption').addEventListener('click',addOptionRow);
+  qs('#productForm').addEventListener('submit',submitProduct);
+  addOptionRow();
+})();
+
+/* ===== Render produktów ===== */
+function renderProducts(){
+  $products.innerHTML='';
+  PRODUCTS.forEach(p=>{
+    const a=document.createElement('article'); a.className='card';
+    a.innerHTML=`
+      <div class="card__img">${p.imageUrl?`<img src="${p.imageUrl}" alt="">`:'<span style="opacity:.4">brak zdjęcia</span>'}</div>
+      <div class="card__body">
+        <h3>${escapeHtml(p.title)}</h3>
+        <div class="tags">${(p.tags||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>
+        <p class="meta">${escapeHtml(p.description||'')}</p>
+        <div class="price">${p.options?.[0]?`${Number(p.options[0].price||0).toFixed(2)} zł`:'—'}</div>
+        <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
+          <button class="btn" data-id="${p.id}" data-action="buy">Kup</button>
+          <button class="btn ghost" data-id="${p.id}" data-action="cart">Dodaj do koszyka</button>
+          ${ME?.is_admin?`<button class="btn ghost" data-id="${p.id}" data-action="edit">Edytuj</button>
+          <button class="btn ghost" style="color:#ff8b8b;border-color:#3a151a" data-id="${p.id}" data-action="del">Usuń</button>`:''}
+        </div>
+      </div>`;
+    a.addEventListener('click',e=>{
+      const b=e.target.closest('button'); if(!b) return;
+      const id=b.dataset.id; const pdt=PRODUCTS.find(x=>x.id===id); if(!pdt) return;
+      if(b.dataset.action==='buy') openBuy(pdt);
+      if(b.dataset.action==='cart') addToCart(pdt, pdt.options?.[0]||null);
+      if(b.dataset.action==='edit') loadProductToForm(pdt);
+      if(b.dataset.action==='del') delProduct(pdt.id);
+    });
+    $products.appendChild(a);
+  });
+}
+
+/* ===== Modal Kup ===== */
+function openBuy(p){
+  buyModal.classList.remove('hidden'); qs('#buyTitle').textContent=`Kup • ${p.title}`;
+  const box=qs('#buyOptions'); box.innerHTML='';
+  if(!p.options||!p.options.length){ box.innerHTML='<p class="meta">Brak wariantów.</p>'; }
+  else p.options.forEach((o,i)=>{
+    const row=document.createElement('label');
+    row.style.cssText='display:flex;justify-content:space-between;align-items:center;margin:.35rem 0';
+    row.innerHTML=`<span><input type="radio" name="opt" ${i===0?'checked':''} value="${i}"> ${escapeHtml(o.label)}</span><b>${Number(o.price||0).toFixed(2)} zł</b>`;
+    box.appendChild(row);
+  });
+  qs('#buyAddToCart').onclick=()=>{
+    const chosen=box.querySelector('input[name="opt"]:checked');
+    const idx=chosen?Number(chosen.value):0;
+    addToCart(p, (p.options||[])[idx]||null);
+    buyModal.classList.add('hidden');
+  };
+}
+
+/* ===== Koszyk ===== */
+function addToCart(p,opt){
+  if(!opt){ alert('Brak wariantów.'); return; }
+  const i=CART.findIndex(x=>x.id===p.id && x.option?.label===opt.label);
+  if(i>-1) CART[i].qty+=1; else CART.push({id:p.id,title:p.title,option:{label:opt.label,price:Number(opt.price||0),link:opt.link||''},qty:1});
+  saveCart();
+}
+function renderCart(){
+  const box=qs('#cartList'); box.innerHTML=''; if(!CART.length){ box.innerHTML='<p class="meta">Koszyk jest pusty.</p>'; return; }
+  let sum=0;
+  CART.forEach((it,k)=>{ sum+=Number(it.option.price||0)*(it.qty||1);
+    const row=document.createElement('div'); row.className='item';
+    row.innerHTML=`
+      <div>
+        <div><b>${escapeHtml(it.title)}</b> — ${escapeHtml(it.option.label)}</div>
+        <div class="meta">${Number(it.option.price||0).toFixed(2)} zł × 
+          <button class="btn ghost" data-k="${k}" data-act="dec">−</button>
+          <b>${it.qty}</b>
+          <button class="btn ghost" data-k="${k}" data-act="inc">+</button>
+        </div>
+      </div>
+      <div><button class="btn ghost" data-k="${k}" data-act="del">Usuń</button></div>`;
+    row.addEventListener('click',e=>{
+      const b=e.target.closest('button'); if(!b) return; const K=Number(b.dataset.k), act=b.dataset.act;
+      if(act==='inc') CART[K].qty++;
+      if(act==='dec') CART[K].qty=Math.max(1,CART[K].qty-1);
+      if(act==='del') CART.splice(K,1);
+      saveCart(); renderCart();
+    });
+    box.appendChild(row);
+  });
+  const sumEl=document.createElement('div'); sumEl.style.textAlign='right'; sumEl.style.marginTop='8px';
+  sumEl.innerHTML=`<b>Razem: ${sum.toFixed(2)} zł</b>`; box.appendChild(sumEl);
+}
+async function checkout(){
+  if(!token()) return alert('Zaloguj się, aby kupić.');
+  if(!CART.length) return alert('Koszyk pusty.');
+  const body={items:CART, note:qs('#orderNote').value||""};
+  try{ const res=await API('/api/order',{method:'POST',body:JSON.stringify(body)});
+    if(res.ok){ CART=[]; saveCart(); cartModal.classList.add('hidden'); alert('Zamówienie wysłane ✔'); }
+    else alert('Błąd zamówienia.');
+  }catch{ alert('Błąd sieci.'); }
+}
+
+/* ===== Admin ===== */
+function addOptionRow(data={label:'1 mies.', price:0, link:''}){
+  const wrap=qs('#optionsWrap'); const row=document.createElement('div');
+  row.style.cssText='display:grid;grid-template-columns:1fr 120px 1fr auto;gap:8px;margin:6px 0';
+  row.innerHTML=`
+    <input placeholder="Nazwa wariantu" value="${escapeAttr(data.label||'')}">
+    <input type="number" step="0.01" placeholder="Cena" value="${Number(data.price||0)}">
+    <input placeholder="Link docelowy (po Kup)" value="${escapeAttr(data.link||'')}">
+    <button type="button" class="ghost">Usuń</button>`;
+  row.querySelector('button').onclick=()=>row.remove();
+  wrap.appendChild(row);
+}
+function loadProductToForm(p){
+  adminPanel.classList.remove('hidden');
+  const f=qs('#productForm');
+  f.id.value=p.id||''; f.title.value=p.title||''; f.description.value=p.description||''; f.imageUrl.value=p.imageUrl||'';
+  f.tags.value=(p.tags||[]).join(','); qs('#optionsWrap').innerHTML=''; (p.options||[]).forEach(o=>addOptionRow(o));
+}
+async function submitProduct(e){
+  e.preventDefault();
+  if(!ME?.is_admin) return alert('Brak uprawnień (admin).');
+  const f=e.target;
+  const options=[...qs('#optionsWrap').children].map(row=>{
+    const [l,p,ln]=row.querySelectorAll('input'); return {label:l.value.trim(), price:Number(p.value||0), link:(ln.value||'').trim()};
+  }).filter(o=>o.label && !isNaN(o.price));
+  const payload={id:f.id.value.trim(), title:f.title.value.trim(), description:f.description.value.trim(), imageUrl:f.imageUrl.value.trim(), tags:f.tags.value.split(',').map(s=>s.trim()).filter(Boolean), options};
+  if(!payload.id||!payload.title) return alert('Uzupełnij ID i Tytuł.');
+  try{
+    const res=await API('/api/products',{method:'POST',body:JSON.stringify(payload)});
+    if(res.ok){ const list=await API('/api/products'); PRODUCTS=list.products||[]; renderProducts(); alert('Zapisano produkt ✔'); }
+    else alert('Błąd zapisu.');
+  }catch{ alert('Błąd sieci.'); }
+}
+async function delProduct(id){
+  if(!ME?.is_admin) return alert('Brak uprawnień (admin).');
+  if(!confirm('Usunąć produkt?')) return;
+  try{
+    const res=await API(`/api/products/${encodeURIComponent(id)}`,{method:'DELETE'});
+    if(res.ok){ const list=await API('/api/products'); PRODUCTS=list.products||[]; renderProducts(); }
+    else alert('Nie udało się usunąć.');
+  }catch{ alert('Błąd sieci.'); }
+}
+
+/* ===== Utils ===== */
+function escapeHtml(s=''){ return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+function escapeAttr(s=''){ return s.replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>
