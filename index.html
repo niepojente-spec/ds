@@ -7,20 +7,24 @@
   <link rel="stylesheet" href="./assets/style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">DS • Sklep</div>
-    <nav class="spacer"></nav>
-    <div id="userBox" class="userbox">Gość</div>
-    <a class="btn" href="./login.html">Zaloguj</a>
-    <button id="cartBtn" class="btn icon">🛒 <span id="cartCount">0</span></button>
-  </header>
-
+  <!-- tło gwiazd -->
   <canvas id="stars"></canvas>
 
-  <main class="container">
-    <div class="admin-panel" id="adminPanel" hidden>
-      <h2>Panel admina</h2>
+  <!-- pasek górny -->
+  <header class="topbar">
+    <div class="container row">
+      <div class="brand">DS • Sklep</div>
+      <div class="spacer"></div>
+      <div id="userBox" class="userbox">Gość</div>
+      <a class="btn ghost" href="./login.html">Zaloguj</a>
+      <button id="cartBtn" class="btn icon">🛒 <span id="cartCount">0</span></button>
+    </div>
+  </header>
 
+  <main class="container">
+    <!-- panel admina -->
+    <section class="admin-panel" id="adminPanel" hidden>
+      <h2>Panel admina</h2>
       <form id="productForm" class="card">
         <div class="row">
           <label>ID</label>
@@ -48,7 +52,7 @@
           <button class="btn primary" type="submit">Zapisz produkt</button>
         </div>
       </form>
-    </div>
+    </section>
 
     <section>
       <h2>Nasze produkty</h2>
@@ -56,7 +60,7 @@
     </section>
   </main>
 
-  <!-- Modal koszyka -->
+  <!-- modal koszyka -->
   <div id="cartModal" class="modal" hidden>
     <div class="modal-body">
       <h3>Twój koszyk</h3>
@@ -69,9 +73,9 @@
         <label><input type="radio" name="pay" value="Płatność C"> Płatność C</label>
       </div>
 
-      <div class="total">Razem: <span id="cartTotal">0.00</span></div>
+      <div class="total">Razem: <span id="cartTotal">0.00</span> zł</div>
 
-      <div class="actions">
+      <div class="actions right">
         <button id="cartCancel" class="btn">Anuluj</button>
         <button id="cartConfirm" class="btn primary">Zatwierdź</button>
       </div>
