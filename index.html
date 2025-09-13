@@ -3,82 +3,85 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Sklep • DS</title>
+  <title>DS • Sklep</title>
   <link rel="stylesheet" href="./shop.css"/>
 </head>
 <body>
-<canvas id="bg"></canvas>
+  <!-- tło -->
+  <canvas id="bg"></canvas>
 
-<header class="topbar">
-  <div class="left">
-    <h1>DS • Sklep</h1>
-  </div>
-  <div class="right">
-    <button id="adminPanelBtn" class="ghost" hidden>Panel admina</button>
-    <div id="userBox" class="user">
-      <img id="userAvatar" src="" alt="" />
-      <span id="userName">Gość</span>
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="container">
+      <div class="brand">DS • Sklep</div>
+      <nav class="actions">
+        <button id="adminPanelBtn" class="btn ghost" hidden>Panel admina</button>
+        <div id="userBox" class="user">
+          <img id="userAvatar" alt="">
+          <span id="userName">Gość</span>
+        </div>
+        <a class="btn ghost" id="loginBtn" href="/ds/">Zaloguj</a>
+        <button class="btn acc" id="cartBtn">🛒 <span id="cartCount">0</span></button>
+      </nav>
     </div>
-    <a class="btn" href="../index.html#login">Zaloguj</a>
-    <button class="btn" id="cartBtn">🛒 <span id="cartCount">0</span></button>
-  </div>
-</header>
+  </header>
 
-<main>
-  <section class="grid" id="products"></section>
-</main>
+  <main class="container">
+    <section class="grid" id="products"></section>
+  </main>
 
-<!-- Modal BUY -->
-<div id="buyModal" class="modal hidden">
-  <div class="modal__content">
-    <h3 id="buyTitle">Kup</h3>
-    <div id="buyOptions"></div>
-    <div class="modal__actions">
-      <button class="btn ghost" id="buyCancel">Anuluj</button>
-      <button class="btn" id="buyAddToCart">Dodaj do koszyka</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal CART -->
-<div id="cartModal" class="modal hidden">
-  <div class="modal__content">
-    <h3>Twój koszyk</h3>
-    <div id="cartList"></div>
-    <textarea id="orderNote" placeholder="Dodatkowa notatka..."></textarea>
-    <div class="modal__actions">
-      <button class="btn ghost" id="cartClose">Zamknij</button>
-      <button class="btn pulse" id="cartCheckout">Kup</button>
+  <!-- Modal BUY -->
+  <div id="buyModal" class="modal hidden">
+    <div class="modal__content">
+      <h3 id="buyTitle">Kup</h3>
+      <div id="buyOptions"></div>
+      <div class="modal__actions">
+        <button class="btn ghost" id="buyCancel">Anuluj</button>
+        <button class="btn" id="buyAddToCart">Dodaj do koszyka</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Panel admina -->
-<div id="adminPanel" class="drawer hidden">
-  <div class="drawer__head">
-    <h3>Panel admina</h3>
-    <button id="adminClose" class="ghost">x</button>
-  </div>
-  <form id="productForm">
-    <label>ID (unikalne): <input name="id" required/></label>
-    <label>Tytuł: <input name="title" required/></label>
-    <label>Opis: <textarea name="description"></textarea></label>
-    <label>Obrazek (URL): <input name="imageUrl"/></label>
-    <label>Tagi (po przecinku): <input name="tags"/></label>
-
-    <h4>Warianty</h4>
-    <div id="optionsWrap"></div>
-    <button type="button" id="addOption" class="ghost">+ wariant</button>
-
-    <div class="drawer__actions">
-      <button type="submit" class="btn">Zapisz produkt</button>
+  <!-- Modal CART -->
+  <div id="cartModal" class="modal hidden">
+    <div class="modal__content">
+      <h3>Twój koszyk</h3>
+      <div id="cartList"></div>
+      <textarea id="orderNote" placeholder="Dodatkowa notatka..."></textarea>
+      <div class="modal__actions">
+        <button class="btn ghost" id="cartClose">Zamknij</button>
+        <button class="btn pulse" id="cartCheckout">Kup</button>
+      </div>
     </div>
-  </form>
-</div>
+  </div>
 
-<script>
-  const API_BASE_URL = "https://api.sparkedservers.us"; // twój HTTPS proxy
-</script>
-<script src="./shop.js"></script>
+  <!-- Panel admina -->
+  <div id="adminPanel" class="drawer hidden">
+    <div class="drawer__head">
+      <h3>Panel admina</h3>
+      <button id="adminClose" class="ghost">×</button>
+    </div>
+    <form id="productForm">
+      <label>ID (unikalne): <input name="id" required/></label>
+      <label>Tytuł: <input name="title" required/></label>
+      <label>Opis: <textarea name="description"></textarea></label>
+      <label>Obrazek (URL): <input name="imageUrl"/></label>
+      <label>Tagi (po przecinku): <input name="tags"/></label>
+
+      <h4>Warianty</h4>
+      <div id="optionsWrap"></div>
+      <button type="button" id="addOption" class="ghost">+ wariant</button>
+
+      <div class="drawer__actions">
+        <button type="submit" class="btn">Zapisz produkt</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    // <- Twój HTTPS reverse proxy
+    const API_BASE_URL = "https://api.sparkedservers.us";
+  </script>
+  <script src="./shop.js"></script>
 </body>
 </html>
