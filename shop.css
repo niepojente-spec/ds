@@ -7,13 +7,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
   font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue","Noto Sans",Arial}
 a{color:inherit;text-decoration:none}
 button{cursor:pointer;border:0}
-
 .container{max-width:1200px;margin:0 auto;padding:0 16px}
 
-/* CANVAS as background */
+/* canvas bg */
 #bg{position:fixed;inset:0;z-index:0}
 
-/* TOPBAR */
+/* topbar */
 .topbar{position:sticky;top:0;z-index:5;background:rgba(11,15,18,.78);
   backdrop-filter:blur(10px);border-bottom:1px solid var(--stroke)}
 .topbar .container{height:64px;display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -21,41 +20,50 @@ button{cursor:pointer;border:0}
 .actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .user{display:flex;align-items:center;gap:8px;padding:4px 10px;border:1px solid var(--stroke);border-radius:999px;background:#0d141a}
 .user img{width:26px;height:26px;border-radius:50%;object-fit:cover;display:none}
-
 .btn{background:var(--acc);color:#06110a;padding:.6rem .9rem;border-radius:.6rem;font-weight:700}
 .btn.acc{background:var(--acc)}
 .btn.ghost{background:transparent;border:1px solid var(--stroke);color:var(--text)}
 .btn.pulse{animation:pulse 1.4s infinite}
 
-/* GRID */
-main{position:relative;z-index:1} /* nad canvasem */
+/* grid */
+main{position:relative;z-index:1}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:18px 0}
 
-/* CARD */
+/* card */
 .card{background:var(--card);border:1px solid var(--stroke);border-radius:16px;overflow:hidden;
   display:flex;flex-direction:column;transition:transform .15s, box-shadow .15s}
 .card:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,0,0,.35)}
 .card__img{height:180px;background:#0d1216;display:flex;align-items:center;justify-content:center}
 .card__img img{max-height:100%;max-width:100%;object-fit:contain}
 .card__body{padding:14px;display:flex;flex-direction:column;gap:8px}
-.tags{display:flex;flex-wrap:wrap;gap:6px}
-.tag{font-size:.75rem;background:#0c141b;border:1px solid #16202b;padding:2px 8px;border-radius:999px;color:#8db1c6}
 .price{color:var(--acc);font-weight:800}
 
-/* MODALS */
+/* modals */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10}
 .modal.hidden{display:none}
 .modal__content{width:min(560px,94vw);background:#0e141a;border:1px solid #1c2732;border-radius:14px;padding:16px}
 .modal__actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
 textarea#orderNote{width:100%;min-height:80px;margin-top:8px;background:#0a1015;border:1px solid var(--stroke);color:var(--text);border-radius:10px;padding:.6rem}
 
-/* DRAWER (admin) */
-.drawer{position:fixed;right:0;top:0;bottom:0;width:min(420px,96vw);background:#0e141a;border-left:1px solid #1c2732;padding:16px;z-index:15;overflow:auto}
+/* drawer admin */
+.drawer{position:fixed;right:0;top:0;bottom:0;width:min(460px,96vw);background:#0e141a;border-left:1px solid #1c2732;padding:16px;z-index:15;overflow:auto}
 .drawer.hidden{display:none}
 .drawer__head{display:flex;justify-content:space-between;align-items:center}
 .drawer__actions{margin-top:12px;display:flex;justify-content:flex-end}
 label{display:block;margin:.5rem 0;color:#b7c7d6}
 input,textarea{width:100%;background:#0a1015;border:1px solid var(--stroke);color:var(--text);border-radius:10px;padding:.6rem}
+.priceRow{display:flex;gap:10px}
+
+/* uploader */
+.uploader{border:1px dashed #2a3644;border-radius:12px;background:#0a1014;margin-bottom:12px}
+.uploader__inner{padding:16px;text-align:center;color:#9ab0c2}
+.uploader__inner img{max-width:100%;max-height:220px;display:none;margin-top:10px;border-radius:8px;border:1px solid #1b2733}
+.uploader.drag{border-color:#3b82f6;background:#0b1220}
+
+/* variants */
+details.variants summary{cursor:pointer;padding:.4rem 0;color:#8fb1ff}
+details.variants{margin-top:8px}
+#optionsWrap > div{display:grid;grid-template-columns:1fr 120px 1fr auto;gap:8px;margin:6px 0}
 
 @keyframes pulse{
   0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}
