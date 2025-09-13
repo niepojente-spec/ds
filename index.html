@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Logowanie — Sklep Discord</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, sans-serif; margin: 40px auto; max-width: 560px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; box-shadow: 0 1px 6px rgba(0,0,0,.04); }
+    input { padding: 12px; font-size: 16px; width: 100%; border-radius: 10px; border: 1px solid #d1d5db; }
+    button { padding: 12px 16px; font-size: 16px; border-radius: 10px; border: 0; cursor: pointer; }
+    .row { display: flex; gap: 10px; margin-top: 12px; }
+    .ok { color: #065f46; }
+    .err { color: #b91c1c; }
+    .user { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #e5e7eb; object-fit: cover; }
+    .hint { color: #6b7280; font-size: 14px; }
+    .muted { color: #6b7280; }
+  </style>
+</head>
+<body>
+  <h1>Logowanie przez kod DM</h1>
+  <div class="card">
+    <ol>
+      <li>Na serwerze Discord wejdź na kanał <b>#zaloguj</b> i kliknij przycisk <b>Zaloguj</b>.</li>
+      <li>Sprawdź prywatną wiadomość od bota z kodem (format: <code>XXXX-XXXX-XXXX-XXXX</code>).</li>
+      <li>Wpisz kod poniżej.</li>
+    </ol>
+
+    <div class="row">
+      <input id="code" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="one-time-code" />
+      <button id="btn">Zaloguj</button>
+    </div>
+    <p id="msg" class="hint"></p>
+
+    <div id="profile" style="display:none">
+      <div class="user">
+        <img id="avatar" class="avatar" alt="">
+        <div>
+          <div id="username"></div>
+          <div id="userid" class="muted"></div>
+        </div>
+      </div>
+      <p class="hint">Token sesji zapisaliśmy w Twojej przeglądarce (localStorage). Na razie służy tylko do potwierdzenia logowania.</p>
+    </div>
+  </div>
+
+  <script>
+    // USTAW: publiczny URL Twojego API (SparkedHost, reverse proxy lub domena)
+    const API_BASE_URL = "https://twoj-api.example.com"; // <- podmień!
+
+    const codeInput = document.getElementById('code');
+    const btn = document.getElementById('btn');
+    const msg = document.getElementById('msg');
+    const profile = document.getElementById('profile');
+    const username = document.getElementById('username');
+    const userid = document.getElementById('userid');
+    const avatar = document.getElementById('avatar');
+
+    btn.addEventListener('click', async () => {
+      const code = codeInput.value.trim();
+      msg.textContent = "Logowanie...";
+      msg.className = "hint";
+
+      try {
+        const r = await fetch(API_BASE_URL + "/api/login/otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code })
+        });
+        const j = await r.json();
+        if (!r.ok || !j.ok) {
+          throw new Error(j.detail || j.error || "Nieprawidłowy lub wygasły kod");
+        }
+        // Zapis tokena (opcjonalnie użyj sessionStorage)
+        localStorage.setItem("auth_token", j.token);
+        localStorage.setItem("user", JSON.stringify(j.user));
+
+        msg.textContent = "Zalogowano pomyślnie ✅";
+        msg.className = "ok";
+        username.textContent = j.user.username;
+        userid.textContent = "ID: " + j.user.id;
+        avatar.src = j.user.avatar || "";
+        avatar.alt = j.user.username;
+        profile.style.display = "block";
+      } catch (e) {
+        msg.textContent = "Błąd: " + e.message;
+        msg.className = "err";
+        profile.style.display = "none";
+      }
+    });
+
+    // Jeśli już mamy token, pokaż profil
+    (function bootstrap(){
+      const u = localStorage.getItem("user");
+      if (u) {
+        const j = JSON.parse(u);
+        username.textContent = j.username;
+        userid.textContent = "ID: " + j.id;
+        avatar.src = j.avatar || "";
+        avatar.alt = j.username;
+        profile.style.display = "block";
+        msg.textContent = "Masz aktywną sesję lokalnie.";
+        msg.className = "ok";
+      }
+    })();
+  </script>
+</body>
+</html>
