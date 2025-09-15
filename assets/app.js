@@ -1,4 +1,3 @@
-/* minimalny "framework" */
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -8,7 +7,7 @@ const LS_CART  = "ds_cart";
 
 let me = null;
 let products = [];
-let cart = JSON.parse(localStorage.getItem(LS_CART) || "[]"); // [{id,title,variant,price,qty,image}]
+let cart = JSON.parse(localStorage.getItem(LS_CART) || "[]");
 
 function setCart(c){
   cart = c;
@@ -18,7 +17,6 @@ function setCart(c){
 
 function money(n){ return (n||0).toFixed(2) + " zł"; }
 
-/* ----------- auth ----------- */
 async function fetchMe(){
   const token = localStorage.getItem(LS_TOKEN);
   if(!token){ me=null; $("#who").textContent="Gość"; $("#adminPanel").classList.add("hidden"); return; }
@@ -40,7 +38,6 @@ async function doLogin(code){
   await fetchMe();
 }
 
-/* ----------- products ----------- */
 async function loadProducts(){
   const res = await fetch(`${API}/api/products`);
   const data = await res.json();
@@ -67,7 +64,6 @@ function renderProducts(){
   $("#list").innerHTML = products.map(productCard).join("");
 }
 
-/* ----------- cart ----------- */
 function renderCart(){
   const wrap = $("#cartItems");
   if(cart.length===0){ wrap.innerHTML = `<div class="muted">Koszyk jest pusty.</div>`; $("#sum").textContent=money(0); return; }
@@ -109,7 +105,6 @@ async function submitOrder(){
   $("#cartModal").classList.add("hidden");
 }
 
-/* ----------- admin: upsert ----------- */
 function addOptRow(label="", price="0.00", link=""){
   const row = document.createElement("div");
   row.className = "grid3";
@@ -158,7 +153,6 @@ async function adminSave(){
   alert("Zapisano.");
 }
 
-/* ----------- events ----------- */
 document.addEventListener("click", async (e)=>{
   const t = e.target;
 
@@ -171,7 +165,6 @@ document.addEventListener("click", async (e)=>{
     try{
       await doLogin($("#loginCode").value.trim());
       $("#loginModal").classList.add("hidden");
-      // po logowaniu wróć do sklepu
       location.hash="#shop";
     }catch(err){ $("#loginErr").textContent = String(err); }
   }
@@ -195,7 +188,7 @@ document.addEventListener("click", async (e)=>{
   if(t.matches("#cartSubmit")){ await submitOrder(); }
 
   if(t.matches("#optAdd")){ addOptRow(); }
-  if(t.matches("#optDel")){ const rows=$$("#opts>.grid3"); if(rows.length) rows.at(-1).remove(); }
+  if(t.matches("#optDel")){ const rows=[...$("#opts").children]; if(rows.length) rows.at(-1).remove(); }
 
   if(t.matches("#btnSave")){ await adminSave(); }
 });
@@ -203,16 +196,14 @@ document.addEventListener("click", async (e)=>{
 document.addEventListener("change", (e)=>{
   if(e.target.matches("#p_upload")){
     const f = e.target.files[0];
-    if(f){ $("#p_image").value = "(po zapisie: /uploads/... zostanie ustawione)"; }
+    if(f){ $("#p_image").value = "(ustawi się po zapisie na /uploads/...)"; }
   }
 });
 
-/* ----------- boot ----------- */
 (async function(){
   addOptRow("1 miesiąc","10.00","");
   await fetchMe();
   await loadProducts();
   setCart(cart);
-  // jeżeli hash #login – pokaż od razu modal
   if(location.hash==="#login") $("#loginModal").classList.remove("hidden");
 })();
