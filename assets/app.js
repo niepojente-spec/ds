@@ -1,311 +1,218 @@
-/* ===== CONFIG ===== */
-const API_BASE = "https://api.sparkedservers.us"; // podmień na swój host reverse-proxy (bez /api na końcu)
-const STORAGE_KEY = "ds_jwt";
+/* minimalny "framework" */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
 
-/* ===== HELPERS ===== */
-const $ = (q, r=document) => r.querySelector(q);
-const $$ = (q, r=document) => [...r.querySelectorAll(q)];
-const authHeader = () => {
-  const t = localStorage.getItem(STORAGE_KEY);
-  return t ? { Authorization: `Bearer ${t}` } : {};
-};
-const fmt = n => (Math.round(Number(n) * 100) / 100).toFixed(2);
-const API = API_BASE.replace(/\/$/, "");
-const toImg = (url) => {
-  if (!url) return "";
-  if (url.startsWith("http")) return url;
-  if (url.startsWith("/")) return `${API}${url}`;
-  return url;
-};
-function saveCart() {
-  localStorage.setItem("ds_cart", JSON.stringify(cart));
-  updateCartCount();
-}
-function loadCart() {
-  try { return JSON.parse(localStorage.getItem("ds_cart")||"[]"); } catch { return []; }
-}
+const API = window.API_BASE ?? "http://localhost:8091";
+const LS_TOKEN = "ds_token";
+const LS_CART  = "ds_cart";
 
-/* ===== STATE ===== */
-let currentUser = null;
+let me = null;
 let products = [];
-let cart = loadCart(); // {id, title, qty, option, imageUrl}
+let cart = JSON.parse(localStorage.getItem(LS_CART) || "[]"); // [{id,title,variant,price,qty,image}]
 
-/* ===== STARS BG ===== */
-(() => {
-  const c = $("#stars");
-  if (!c) return;
-  const ctx = c.getContext("2d");
-  const stars = new Array(140).fill(0).map(()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.2+.2}));
-  const resize = () => { c.width=innerWidth; c.height=innerHeight; };
-  addEventListener("resize", resize); resize();
-  const loop = () => {
-    ctx.clearRect(0,0,c.width,c.height);
-    ctx.fillStyle="#0ea5e9";
-    for(const s of stars){
-      const x=s.x*c.width, y=s.y*c.height;
-      ctx.globalAlpha=0.6+Math.sin((performance.now()/700+x+y))*0.2;
-      ctx.beginPath(); ctx.arc(x,y,s.r,0,Math.PI*2); ctx.fill();
-    }
-    requestAnimationFrame(loop);
-  };
-  loop();
-})();
-
-/* ===== AUTH ===== */
-async function fetchMe() {
-  try {
-    const r = await fetch(`${API}/api/me`, { headers: { ...authHeader() } });
-    const j = await r.json();
-    if (j.ok) currentUser = j.user; else currentUser = null;
-  } catch { currentUser = null; }
-  updateUserBox();
+function setCart(c){
+  cart = c;
+  localStorage.setItem(LS_CART, JSON.stringify(cart));
+  $("#cartCount").textContent = String(cart.reduce((a,b)=>a+b.qty,0));
 }
 
-function updateUserBox() {
-  const box = $("#userBox");
-  if (!box) return;
-  if (currentUser) {
-    box.textContent = currentUser.username + (currentUser.is_admin ? " (admin)" : "");
-    $("#loginBtn")?.setAttribute("hidden","");
-    $("#adminPanel")?.toggleAttribute("hidden", !currentUser.is_admin);
-  } else {
-    box.textContent = "Gość";
-    $("#loginBtn")?.removeAttribute("hidden");
-    $("#adminPanel")?.setAttribute("hidden","");
-  }
+function money(n){ return (n||0).toFixed(2) + " zł"; }
+
+/* ----------- auth ----------- */
+async function fetchMe(){
+  const token = localStorage.getItem(LS_TOKEN);
+  if(!token){ me=null; $("#who").textContent="Gość"; $("#adminPanel").classList.add("hidden"); return; }
+  const res = await fetch(`${API}/api/me`, {headers:{Authorization:`Bearer ${token}`}})
+  if(!res.ok){ localStorage.removeItem(LS_TOKEN); me=null; $("#who").textContent="Gość"; return; }
+  me = await res.json();
+  $("#who").textContent = me.username + (me.admin?" (admin)":"");
+  if(me.admin) $("#adminPanel").classList.remove("hidden");
 }
 
-async function doOtpLogin() {
-  const code = $("#otpInput").value.trim();
-  $("#loginMsg").textContent = "";
-  let resp, j;
-  try {
-    resp = await fetch(`${API}/api/auth/by-code`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code })
-    });
-    j = await resp.json();
-  } catch {
-    $("#loginMsg").textContent = "Błąd sieci.";
-    return;
-  }
-  if (!j.ok) {
-    $("#loginMsg").textContent = "Błędny lub zużyty kod.";
-    return;
-  }
-  localStorage.setItem(STORAGE_KEY, j.token);
-  await fetchMe();
-  $("#loginMsg").textContent = "Zalogowano. Przekierowuję…";
-  // Redirect do sklepu
-  location.replace("./index.html");
-}
-
-/* ===== PRODUCTS ===== */
-async function loadProducts() {
-  const r = await fetch(`${API}/api/products`);
-  const j = await r.json();
-  products = j.products || [];
-  renderGrid();
-}
-
-function renderGrid() {
-  const g = $("#grid");
-  if (!g) return;
-  g.innerHTML = "";
-  for (const p of products) {
-    const card = document.createElement("div");
-    card.className = "card product";
-    card.innerHTML = `
-      <img class="thumb" src="${toImg(p.imageUrl) || ""}" alt="">
-      <div class="title">${p.title}</div>
-      <div class="desc">${p.description || ""}</div>
-      <select class="opt"></select>
-      <div class="actions">
-        <button class="btn small add">Dodaj do koszyka</button>
-        ${currentUser?.is_admin ? `<button class="btn small ghost del">Usuń</button>` : ""}
-      </div>
-    `;
-    const sel = $(".opt", card);
-    for (const o of p.options || []) {
-      const opt = document.createElement("option");
-      opt.value = o.label;
-      opt.textContent = `${o.label} — ${fmt(o.price)} zł`;
-      opt.dataset.price = o.price;
-      sel.appendChild(opt);
-    }
-    $(".add", card).onclick = () => {
-      const lab = sel.value;
-      const price = Number(sel.selectedOptions[0]?.dataset.price || 0);
-      const idx = cart.findIndex(i => i.id===p.id && i.option?.label===lab);
-      if (idx>-1) cart[idx].qty++;
-      else cart.push({ id:p.id, title:p.title, qty:1, option:{label:lab, price}, imageUrl:p.imageUrl||"" });
-      saveCart();
-    };
-    if (currentUser?.is_admin) {
-      $(".del", card).onclick = async () => {
-        if (!confirm("Usunąć produkt?")) return;
-        await fetch(`${API}/api/products/${encodeURIComponent(p.id)}`, { method:"DELETE", headers:{...authHeader()} });
-        await loadProducts();
-      };
-    }
-    g.appendChild(card);
-  }
-}
-
-/* ===== ADMIN FORM ===== */
-function addOptRow(label="", price="") {
-  const wrap = document.createElement("div");
-  wrap.className = "row";
-  wrap.innerHTML = `
-    <input class="opt-label" placeholder="np. 1 miesiąc" value="${label}">
-    <input class="opt-price" type="number" step="0.01" placeholder="cena" value="${price}">
-    <input class="opt-link" placeholder="link docelowy (opcjonalnie)" value="">
-    <button class="btn small rm" type="button">×</button>
-  `;
-  $(".rm", wrap).onclick = () => wrap.remove();
-  $("#optList").appendChild(wrap);
-}
-
-async function handleUploadIfAny() {
-  const f = $("#p_file");
-  if (!f.files || !f.files[0]) return null;
-  const fd = new FormData();
-  fd.append("file", f.files[0]);
-  const r = await fetch(`${API}/api/upload`, {
-    method: "POST",
-    headers: { ...authHeader() },
-    body: fd
+async function doLogin(code){
+  const res = await fetch(`${API}/api/auth/by-code`, {
+    method:"POST", headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({code})
   });
-  const j = await r.json();
-  if (j.ok) return j.url;
-  return null;
+  if(!res.ok){ throw new Error((await res.text())||"Błąd logowania"); }
+  const data = await res.json();
+  localStorage.setItem(LS_TOKEN, data.token);
+  await fetchMe();
 }
 
-function bindAdmin() {
-  $("#addOpt").onclick = () => addOptRow();
-  addOptRow("1 miesiąc", "10.00");
-
-  $("#productForm").onsubmit = async (e) => {
-    e.preventDefault();
-    const id = $("#p_id").value.trim();
-    const title = $("#p_title").value.trim();
-    let imageUrl = $("#p_image").value.trim();
-    const desc = $("#p_desc").value.trim();
-
-    if (!imageUrl) {
-      const up = await handleUploadIfAny();
-      if (up) imageUrl = up;
-    }
-
-    const options = $$("#optList .row").map(r => ({
-      label: $(".opt-label", r).value.trim(),
-      price: Number($(".opt-price", r).value),
-      link: $(".opt-link", r).value.trim()
-    })).filter(o => o.label && !isNaN(o.price));
-
-    const body = { id, title, description: desc, imageUrl, options };
-    const r = await fetch(`${API}/api/products`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeader() },
-      body: JSON.stringify(body)
-    });
-    const j = await r.json();
-    if (j.ok) {
-      e.target.reset(); $("#optList").innerHTML = ""; addOptRow();
-      await loadProducts();
-      alert("Zapisano.");
-    } else {
-      alert("Błąd zapisu.");
-    }
-  };
+/* ----------- products ----------- */
+async function loadProducts(){
+  const res = await fetch(`${API}/api/products`);
+  const data = await res.json();
+  products = data.items || [];
+  renderProducts();
 }
 
-/* ===== KOSZYK ===== */
-function updateCartCount() {
-  $("#cartCount").textContent = cart.reduce((a,c)=>a+c.qty, 0);
+function productCard(p){
+  const img = p.image || "";
+  const optHtml = p.options.map((o,i)=>`<option value="${i}">${o.label} — ${money(o.price)}</option>`).join("");
+  return `
+  <article class="product">
+    <img src="${img}" alt="">
+    <div class="body">
+      <div class="title">${p.title}</div>
+      <div class="muted">${p.description||""}</div>
+      <select data-id="${p.id}" class="opt">${optHtml}</select>
+      <button class="btn green" data-add="${p.id}">Dodaj do koszyka</button>
+    </div>
+  </article>`;
 }
-function openCart() {
-  const modal = $("#cartModal");
-  const list = $("#cartList");
-  const tot = $("#cartTotal");
-  list.innerHTML = "";
-  let sum = 0;
 
-  cart.forEach((it, idx) => {
-    sum += it.qty * Number(it.option.price || 0);
-    const row = document.createElement("div");
-    row.className = "cart-row";
-    row.innerHTML = `
-      <img src="${toImg(it.imageUrl) || ""}" alt="">
+function renderProducts(){
+  $("#list").innerHTML = products.map(productCard).join("");
+}
+
+/* ----------- cart ----------- */
+function renderCart(){
+  const wrap = $("#cartItems");
+  if(cart.length===0){ wrap.innerHTML = `<div class="muted">Koszyk jest pusty.</div>`; $("#sum").textContent=money(0); return; }
+  wrap.innerHTML = cart.map((it,idx)=>`
+    <div class="cartrow">
+      <img src="${it.image||''}" alt="">
       <div>
-        <div class="title">${it.title}</div>
-        <div class="muted">${it.option.label}</div>
+        <div><b>${it.title}</b></div>
+        <div class="muted">${it.variant}</div>
       </div>
       <div class="qty">
-        <button class="btn small" data-i="${idx}" data-a="-1">-</button>
+        <button data-dec="${idx}">−</button>
         <span>${it.qty}</span>
-        <button class="btn small" data-i="${idx}" data-a="1">+</button>
+        <button data-inc="${idx}">+</button>
       </div>
-      <div>${fmt(it.option.price)} zł</div>
-      <button class="btn small ghost rm" data-i="${idx}">×</button>
-    `;
-    list.appendChild(row);
-  });
-  tot.textContent = `${fmt(sum)} zł`;
+      <div><b>${money(it.price*it.qty)}</b></div>
+    </div>
+  `).join("");
 
-  list.onclick = (e) => {
-    const i = e.target.dataset.i;
-    if (e.target.matches(".rm")) {
-      cart.splice(i, 1);
-      saveCart(); openCart();
-    } else if (e.target.matches("[data-a]")) {
-      const d = Number(e.target.dataset.a);
-      cart[i].qty = Math.max(1, cart[i].qty + d);
-      saveCart(); openCart();
-    }
-  };
-
-  modal.hidden = false;
+  $("#sum").textContent = money(cart.reduce((a,b)=>a+b.qty*b.price,0));
 }
-function closeCart(){ $("#cartModal").hidden = true; }
 
-async function confirmCart() {
-  if (!currentUser) { alert("Zaloguj się najpierw."); return; }
-  if (!cart.length) { closeCart(); return; }
-  const pay = $('input[name="pay"]:checked').value;
-  let resp, j;
-  try {
-    resp = await fetch(`${API}/api/order`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeader() },
-      body: JSON.stringify({ items: cart, payment: pay })
-    });
-    j = await resp.json();
-  } catch (e) {
-    alert("Błąd sieci podczas składania zamówienia.");
+async function submitOrder(){
+  const token = localStorage.getItem(LS_TOKEN);
+  if(!token){ $("#loginModal").classList.remove("hidden"); return; }
+  const payment = ($$("input[name=pay]")).find(x=>x.checked)?.value || "A";
+  const res = await fetch(`${API}/api/order`, {
+    method:"POST",
+    headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+    body: JSON.stringify({items:cart, payment})
+  });
+  if(!res.ok){
+    alert("Nie udało się złożyć zamówienia.");
     return;
   }
-  if (resp.ok && j?.ok) {
-    const url = j.ticket_url;
-    cart = []; saveCart(); closeCart();
-    if (url) window.open(url, "_blank");
-    alert("Zamówienie utworzone. Ticket na Discordzie został otwarty.");
-  } else {
-    alert(`Błąd zamówienia: ${j?.detail || j?.error || resp.status}`);
-  }
+  const data = await res.json();
+  alert("Zamówienie wysłane! Ticket: " + (data.ticket_url||""));
+  setCart([]);
+  $("#cartModal").classList.add("hidden");
 }
 
-/* ===== INIT ===== */
-window.addEventListener("DOMContentLoaded", async () => {
-  $("#otpBtn")?.addEventListener("click", doOtpLogin);
+/* ----------- admin: upsert ----------- */
+function addOptRow(label="", price="0.00", link=""){
+  const row = document.createElement("div");
+  row.className = "grid3";
+  row.innerHTML = `
+    <input placeholder="etykieta (np. 1 miesiąc)" value="${label}">
+    <input type="number" step="0.01" placeholder="cena" value="${price}">
+    <input placeholder="link docelowy (opcjonalnie)" value="${link}">
+  `;
+  $("#opts").appendChild(row);
+}
 
-  $("#cartBtn")?.addEventListener("click", openCart);
-  $("#cartCancel")?.addEventListener("click", closeCart);
-  $("#cartConfirm")?.addEventListener("click", confirmCart);
+async function adminSave(){
+  const token = localStorage.getItem(LS_TOKEN);
+  if(!token){ alert("Zaloguj się jako admin"); return; }
 
-  await fetchMe();
-  if (currentUser?.is_admin) bindAdmin();
+  let image = $("#p_image").value.trim();
+  const file = $("#p_upload").files[0];
+  if(file){
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`${API}/api/upload`, {method:"POST", body:fd});
+    const data = await res.json();
+    image = data.url;
+  }
+
+  const options = [...$("#opts").children].map(r=>{
+    const [a,b,c] = [...r.querySelectorAll("input")];
+    return {label:a.value.trim(), price:parseFloat(b.value||"0"), link:c.value.trim()||null}
+  }).filter(o=>o.label);
+
+  const body = {
+    id: $("#p_id").value.trim(),
+    title: $("#p_title").value.trim(),
+    description: $("#p_desc").value.trim(),
+    image,
+    options
+  };
+
+  const res = await fetch(`${API}/api/products`, {
+    method:"POST",
+    headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+    body: JSON.stringify(body)
+  });
+  if(!res.ok){ alert("Błąd zapisu"); return; }
   await loadProducts();
-  updateCartCount();
+  alert("Zapisano.");
+}
+
+/* ----------- events ----------- */
+document.addEventListener("click", async (e)=>{
+  const t = e.target;
+
+  if(t.matches("#btnCart")){ $("#cartModal").classList.remove("hidden"); renderCart(); }
+  if(t.matches("#cartCancel")){ $("#cartModal").classList.add("hidden"); }
+
+  if(t.matches("#btnLogin")){ $("#loginModal").classList.remove("hidden"); $("#loginErr").textContent=""; }
+
+  if(t.matches("#loginOk")){
+    try{
+      await doLogin($("#loginCode").value.trim());
+      $("#loginModal").classList.add("hidden");
+      // po logowaniu wróć do sklepu
+      location.hash="#shop";
+    }catch(err){ $("#loginErr").textContent = String(err); }
+  }
+
+  if(t.matches("[data-add]")){
+    const id = t.getAttribute("data-add");
+    const p = products.find(x=>x.id===id);
+    const sel = t.parentElement.querySelector("select.opt");
+    const opt = p.options[parseInt(sel.value)];
+    const existing = cart.find(x=>x.id===p.id && x.variant===opt.label);
+    if(existing){ existing.qty += 1; }
+    else{
+      cart.push({ id:p.id, title:p.title, variant:opt.label, price:opt.price, qty:1, image:p.image||"" });
+    }
+    setCart(cart);
+  }
+
+  if(t.matches("[data-inc]")){ const i=+t.getAttribute("data-inc"); cart[i].qty++; setCart(cart); renderCart(); }
+  if(t.matches("[data-dec]")){ const i=+t.getAttribute("data-dec"); cart[i].qty=Math.max(1,cart[i].qty-1); setCart(cart); renderCart(); }
+
+  if(t.matches("#cartSubmit")){ await submitOrder(); }
+
+  if(t.matches("#optAdd")){ addOptRow(); }
+  if(t.matches("#optDel")){ const rows=$$("#opts>.grid3"); if(rows.length) rows.at(-1).remove(); }
+
+  if(t.matches("#btnSave")){ await adminSave(); }
 });
+
+document.addEventListener("change", (e)=>{
+  if(e.target.matches("#p_upload")){
+    const f = e.target.files[0];
+    if(f){ $("#p_image").value = "(po zapisie: /uploads/... zostanie ustawione)"; }
+  }
+});
+
+/* ----------- boot ----------- */
+(async function(){
+  addOptRow("1 miesiąc","10.00","");
+  await fetchMe();
+  await loadProducts();
+  setCart(cart);
+  // jeżeli hash #login – pokaż od razu modal
+  if(location.hash==="#login") $("#loginModal").classList.remove("hidden");
+})();
