@@ -1,7 +1,7 @@
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
-const API = window.API_BASE ?? "http://localhost:8091";
+const API = window.API_BASE; // <-- ustawione w index.html
 const LS_TOKEN = "ds_token";
 const LS_CART  = "ds_cart";
 
@@ -14,33 +14,48 @@ function setCart(c){
   localStorage.setItem(LS_CART, JSON.stringify(cart));
   $("#cartCount").textContent = String(cart.reduce((a,b)=>a+b.qty,0));
 }
-
 function money(n){ return (n||0).toFixed(2) + " zł"; }
+
+function warn(msg){
+  const w = $("#warn");
+  w.textContent = msg;
+  w.classList.remove("hidden");
+}
+
+async function fetchJSON(url, opts){
+  try{
+    const res = await fetch(url, opts);
+    if(!res.ok) throw new Error(await res.text());
+    return await res.json();
+  }catch(e){
+    throw e;
+  }
+}
 
 async function fetchMe(){
   const token = localStorage.getItem(LS_TOKEN);
   if(!token){ me=null; $("#who").textContent="Gość"; $("#adminPanel").classList.add("hidden"); return; }
-  const res = await fetch(`${API}/api/me`, {headers:{Authorization:`Bearer ${token}`}})
-  if(!res.ok){ localStorage.removeItem(LS_TOKEN); me=null; $("#who").textContent="Gość"; return; }
-  me = await res.json();
-  $("#who").textContent = me.username + (me.admin?" (admin)":"");
-  if(me.admin) $("#adminPanel").classList.remove("hidden");
+  try{
+    me = await fetchJSON(`${API}/api/me`, {headers:{Authorization:`Bearer ${token}`}});
+    $("#who").textContent = me.username + (me.admin?" (admin)":"");
+    if(me.admin) $("#adminPanel").classList.remove("hidden");
+  }catch{
+    localStorage.removeItem(LS_TOKEN);
+    me=null; $("#who").textContent="Gość";
+  }
 }
 
 async function doLogin(code){
-  const res = await fetch(`${API}/api/auth/by-code`, {
+  const data = await fetchJSON(`${API}/api/auth/by-code`, {
     method:"POST", headers:{'Content-Type':'application/json'},
     body: JSON.stringify({code})
   });
-  if(!res.ok){ throw new Error((await res.text())||"Błąd logowania"); }
-  const data = await res.json();
   localStorage.setItem(LS_TOKEN, data.token);
   await fetchMe();
 }
 
 async function loadProducts(){
-  const res = await fetch(`${API}/api/products`);
-  const data = await res.json();
+  const data = await fetchJSON(`${API}/api/products`);
   products = data.items || [];
   renderProducts();
 }
@@ -60,9 +75,7 @@ function productCard(p){
   </article>`;
 }
 
-function renderProducts(){
-  $("#list").innerHTML = products.map(productCard).join("");
-}
+function renderProducts(){ $("#list").innerHTML = products.map(productCard).join(""); }
 
 function renderCart(){
   const wrap = $("#cartItems");
@@ -80,9 +93,7 @@ function renderCart(){
         <button data-inc="${idx}">+</button>
       </div>
       <div><b>${money(it.price*it.qty)}</b></div>
-    </div>
-  `).join("");
-
+    </div>`).join("");
   $("#sum").textContent = money(cart.reduce((a,b)=>a+b.qty*b.price,0));
 }
 
@@ -90,17 +101,16 @@ async function submitOrder(){
   const token = localStorage.getItem(LS_TOKEN);
   if(!token){ $("#loginModal").classList.remove("hidden"); return; }
   const payment = ($$("input[name=pay]")).find(x=>x.checked)?.value || "A";
-  const res = await fetch(`${API}/api/order`, {
+  const data = await fetchJSON(`${API}/api/order`, {
     method:"POST",
     headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
     body: JSON.stringify({items:cart, payment})
   });
-  if(!res.ok){
-    alert("Nie udało się złożyć zamówienia.");
-    return;
+  if(data.bot_ok===false){
+    alert("Bot offline – zamówienie zapisane w kolejce. Admin je obsłuży.");
+  }else{
+    alert("Zamówienie wysłane! Ticket: " + (data.ticket_url||""));
   }
-  const data = await res.json();
-  alert("Zamówienie wysłane! Ticket: " + (data.ticket_url||""));
   setCart([]);
   $("#cartModal").classList.add("hidden");
 }
@@ -125,9 +135,8 @@ async function adminSave(){
   if(file){
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch(`${API}/api/upload`, {method:"POST", body:fd});
-    const data = await res.json();
-    image = data.url;
+    const up = await fetchJSON(`${API}/api/upload`, {method:"POST", body:fd});
+    image = up.url;
   }
 
   const options = [...$("#opts").children].map(r=>{
@@ -143,67 +152,48 @@ async function adminSave(){
     options
   };
 
-  const res = await fetch(`${API}/api/products`, {
+  await fetchJSON(`${API}/api/products`, {
     method:"POST",
     headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
     body: JSON.stringify(body)
   });
-  if(!res.ok){ alert("Błąd zapisu"); return; }
   await loadProducts();
   alert("Zapisano.");
 }
 
 document.addEventListener("click", async (e)=>{
   const t = e.target;
-
   if(t.matches("#btnCart")){ $("#cartModal").classList.remove("hidden"); renderCart(); }
   if(t.matches("#cartCancel")){ $("#cartModal").classList.add("hidden"); }
-
   if(t.matches("#btnLogin")){ $("#loginModal").classList.remove("hidden"); $("#loginErr").textContent=""; }
-
   if(t.matches("#loginOk")){
-    try{
-      await doLogin($("#loginCode").value.trim());
-      $("#loginModal").classList.add("hidden");
-      location.hash="#shop";
-    }catch(err){ $("#loginErr").textContent = String(err); }
+    try{ await doLogin($("#loginCode").value.trim()); $("#loginModal").classList.add("hidden"); location.hash="#shop"; }
+    catch(err){ $("#loginErr").textContent = String(err); }
   }
-
   if(t.matches("[data-add]")){
     const id = t.getAttribute("data-add");
     const p = products.find(x=>x.id===id);
     const sel = t.parentElement.querySelector("select.opt");
     const opt = p.options[parseInt(sel.value)];
-    const existing = cart.find(x=>x.id===p.id && x.variant===opt.label);
-    if(existing){ existing.qty += 1; }
-    else{
-      cart.push({ id:p.id, title:p.title, variant:opt.label, price:opt.price, qty:1, image:p.image||"" });
-    }
+    const ex = cart.find(x=>x.id===p.id && x.variant===opt.label);
+    if(ex){ ex.qty+=1; } else { cart.push({id:p.id,title:p.title,variant:opt.label,price:opt.price,qty:1,image:p.image||""}); }
     setCart(cart);
   }
-
   if(t.matches("[data-inc]")){ const i=+t.getAttribute("data-inc"); cart[i].qty++; setCart(cart); renderCart(); }
   if(t.matches("[data-dec]")){ const i=+t.getAttribute("data-dec"); cart[i].qty=Math.max(1,cart[i].qty-1); setCart(cart); renderCart(); }
-
-  if(t.matches("#cartSubmit")){ await submitOrder(); }
-
+  if(t.matches("#cartSubmit")){ try{ await submitOrder(); }catch(e){ alert("Błąd zamówienia: "+e); } }
   if(t.matches("#optAdd")){ addOptRow(); }
   if(t.matches("#optDel")){ const rows=[...$("#opts").children]; if(rows.length) rows.at(-1).remove(); }
-
-  if(t.matches("#btnSave")){ await adminSave(); }
-});
-
-document.addEventListener("change", (e)=>{
-  if(e.target.matches("#p_upload")){
-    const f = e.target.files[0];
-    if(f){ $("#p_image").value = "(ustawi się po zapisie na /uploads/...)"; }
-  }
+  if(t.matches("#btnSave")){ try{ await adminSave(); }catch(e){ alert("Błąd zapisu: "+e); } }
 });
 
 (async function(){
+  // Ostrzeżenie o mixed content
+  if(location.protocol==="https:" && API.startsWith("http://")){
+    warn("Ta strona jest na HTTPS, a API na HTTP – przeglądarka zablokuje połączenie. Wystaw API przez HTTPS albo uruchom frontend przez HTTP.");
+  }
   addOptRow("1 miesiąc","10.00","");
-  await fetchMe();
-  await loadProducts();
+  try{ await fetchMe(); await loadProducts(); }catch(e){ warn("API niedostępne: "+e); }
   setCart(cart);
   if(location.hash==="#login") $("#loginModal").classList.remove("hidden");
 })();
