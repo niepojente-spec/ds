@@ -2,64 +2,92 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8" />
-  <title>DS • Sklep</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="./assets/style.css" />
+  <title>DS • Sklep</title>
+  <link rel="stylesheet" href="./assets/app.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">DS • Sklep</div>
-    <div class="grow"></div>
-    <div id="userBox" class="userbox">Gość</div>
-    <a class="btn ghost" href="./login.html" id="loginBtn">Zaloguj</a>
-    <button id="cartBtn" class="btn badge">🛒 <span id="cartCount">0</span></button>
-  </header>
+<header class="bar">
+  <div class="brand">DS • Sklep</div>
+  <div class="right">
+    <span id="who" class="pill">Gość</span>
+    <button id="btnLogin" class="btn ghost">Zaloguj</button>
+    <button id="btnCart" class="btn cart"><span>🛒</span><em id="cartCount">0</em></button>
+  </div>
+</header>
 
-  <canvas id="stars"></canvas>
+<main class="container">
+  <section id="adminPanel" class="card hidden">
+    <h2>Panel admina</h2>
 
-  <main class="container">
-    <div id="adminPanel" class="admin card" hidden>
-      <h2>Panel admina</h2>
-      <form id="productForm">
-        <label>ID <input id="p_id" required placeholder="unikalne-id"></label>
-        <label>Tytuł <input id="p_title" required placeholder="nazwa produktu"></label>
-        <label>Obrazek (URL) <input id="p_image" placeholder="https://..."></label>
-        <label>lub Upload <input id="p_file" type="file" accept="image/*"></label>
-        <label>Opis <input id="p_desc" placeholder="krótki opis…"></label>
-        <div id="optList"></div>
-        <button class="btn small" id="addOpt" type="button">+ Opcja (np. 1 mies.)</button>
-        <div class="right">
-          <button class="btn" type="submit">Zapisz produkt</button>
-        </div>
-      </form>
+    <div class="grid2">
+      <label>ID <input id="p_id" placeholder="unikalne-id"/></label>
+      <label>Tytuł <input id="p_title" placeholder="nazwa produktu"/></label>
+      <label>Obrazek (URL) <input id="p_image" placeholder="https://... lub /uploads/..."/></label>
+      <label>lub Upload <input type="file" id="p_upload"/></label>
+    </div>
+    <label>Opis <textarea id="p_desc" rows="3" placeholder="krótki opis..."></textarea></label>
+
+    <div id="opts" class="opts">
+      <!-- wiersze opcji -->
+    </div>
+    <div class="row">
+      <button id="optAdd" class="btn green ghost">+ Opcja (np. 1 mies.)</button>
+      <button id="optDel" class="btn red ghost">×</button>
     </div>
 
-    <section>
-      <h2>Nasze produkty</h2>
-      <div id="grid" class="grid"></div>
-    </section>
-  </main>
+    <div class="row">
+      <button id="btnSave" class="btn green">Zapisz produkt</button>
+    </div>
+  </section>
 
-  <!-- Koszyk -->
-  <div class="modal" id="cartModal" hidden>
-    <div class="modal-body">
-      <h3>Twój koszyk</h3>
-      <div id="cartList" class="cart-list"></div>
+  <h2>Nasze produkty</h2>
+  <div id="list" class="grid3"></div>
+</main>
 
-      <div class="pay">
-        <div class="radio"><input type="radio" name="pay" value="Płatność A" checked> <span>Płatność A</span></div>
-        <div class="radio"><input type="radio" name="pay" value="Płatność B"> <span>Płatność B</span></div>
-        <div class="radio"><input type="radio" name="pay" value="Płatność C"> <span>Płatność C</span></div>
+<!-- Koszyk (modal) -->
+<div id="cartModal" class="modal hidden">
+  <div class="sheet">
+    <h3>Twój koszyk</h3>
+    <div id="cartItems" class="cartlist"></div>
+
+    <div class="pay">
+      <div>
+        <div class="muted">Metoda płatności</div>
+        <label><input type="radio" name="pay" value="A" checked/> Płatność A</label>
+        <label><input type="radio" name="pay" value="B"/> Płatność B</label>
+        <label><input type="radio" name="pay" value="C"/> Płatność C</label>
       </div>
-
-      <div class="total">Razem: <strong id="cartTotal">0.00 zł</strong></div>
-      <div class="actions">
-        <button class="btn ghost" id="cartCancel">Anuluj</button>
-        <button class="btn" id="cartConfirm">Zatwierdź</button>
+      <div class="sum">
+        <div class="muted">Razem</div>
+        <div id="sum">0.00 zł</div>
       </div>
+    </div>
+
+    <div class="row end">
+      <button class="btn ghost" id="cartCancel">Anuluj</button>
+      <button class="btn green" id="cartSubmit">Zatwierdź</button>
     </div>
   </div>
+</div>
 
-  <script src="./assets/app.js"></script>
+<!-- Login (modal) -->
+<div id="loginModal" class="modal hidden">
+  <div class="sheet">
+    <h3>Logowanie</h3>
+    <ol class="muted">
+      <li>Na Discordzie wpisz <b>/login</b> – bot poda kod i link.</li>
+      <li>Przepisz kod tutaj i zatwierdź.</li>
+    </ol>
+    <div class="row">
+      <input id="loginCode" placeholder="6-cyfrowy kod" />
+      <button class="btn" id="loginOk">Zaloguj</button>
+    </div>
+    <div id="loginErr" class="err"></div>
+  </div>
+</div>
+
+<script>window.API_BASE="http://"+location.hostname+":8091";</script>
+<script src="./assets/app.js"></script>
 </body>
 </html>
