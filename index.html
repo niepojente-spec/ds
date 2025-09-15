@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>DS • Sklep</title>
-  <link rel="stylesheet" href="./assets/app.css" />
+  <link rel="stylesheet" href="/ds/assets/app.css?v=2"/>
 </head>
 <body>
 <header class="bar">
@@ -15,6 +15,8 @@
     <button id="btnCart" class="btn cart"><span>🛒</span><em id="cartCount">0</em></button>
   </div>
 </header>
+
+<div id="warn" class="warn hidden"></div>
 
 <main class="container">
   <section id="adminPanel" class="card hidden">
@@ -43,7 +45,6 @@
   <div id="list" class="grid3"></div>
 </main>
 
-<!-- Koszyk (modal) -->
 <div id="cartModal" class="modal hidden">
   <div class="sheet">
     <h3>Twój koszyk</h3>
@@ -69,7 +70,6 @@
   </div>
 </div>
 
-<!-- Login (modal) -->
 <div id="loginModal" class="modal hidden">
   <div class="sheet">
     <h3>Logowanie</h3>
@@ -78,14 +78,17 @@
       <li>Przepisz kod tutaj i zatwierdź.</li>
     </ol>
     <div class="row">
-      <input id="loginCode" placeholder="6-cyfrowy kod" />
+      <input id="loginCode" placeholder="6-cyfrowy kod"/>
       <button class="btn" id="loginOk">Zaloguj</button>
     </div>
     <div id="loginErr" class="err"></div>
   </div>
 </div>
 
-<script>window.API_BASE="http://"+location.hostname+":8091";</script>
-<script src="./assets/app.js"></script>
+<script>
+  // USTAW ADRES API (HTTPS jeżeli strona jest na HTTPS!)
+  window.API_BASE = "https://twoja-domena-z-ssl.example.com"; // <-- podmień po wystawieniu przez HTTPS
+</script>
+<script src="/ds/assets/app.js?v=2"></script>
 </body>
 </html>
