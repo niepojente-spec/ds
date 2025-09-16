@@ -1,199 +1,132 @@
-const $ = s => document.querySelector(s);
-const $$ = s => [...document.querySelectorAll(s)];
+const $ = (q, root=document)=>root.querySelector(q);
+const $$ = (q, root=document)=>[...root.querySelectorAll(q)];
+const API = () => window.API_BASE?.replace(/\/$/,'') || '';
 
-const API = window.API_BASE; // <-- ustawione w index.html
-const LS_TOKEN = "ds_token";
-const LS_CART  = "ds_cart";
+let jwtTok = localStorage.getItem('token') || '';
+let cart = [];
 
-let me = null;
-let products = [];
-let cart = JSON.parse(localStorage.getItem(LS_CART) || "[]");
+function fmt(x){ return (Number(x)||0).toFixed(2) + ' zł'; }
 
-function setCart(c){
-  cart = c;
-  localStorage.setItem(LS_CART, JSON.stringify(cart));
-  $("#cartCount").textContent = String(cart.reduce((a,b)=>a+b.qty,0));
-}
-function money(n){ return (n||0).toFixed(2) + " zł"; }
-
-function warn(msg){
-  const w = $("#warn");
-  w.textContent = msg;
-  w.classList.remove("hidden");
+function uiAuth(){
+  $('#userInfo').textContent = jwtTok ? 'Zalogowano' : 'Gość';
+  $('#loginBtn').classList.toggle('hidden', !!jwtTok);
+  $('#logoutBtn').classList.toggle('hidden', !jwtTok);
 }
 
-async function fetchJSON(url, opts){
-  try{
-    const res = await fetch(url, opts);
-    if(!res.ok) throw new Error(await res.text());
-    return await res.json();
-  }catch(e){
-    throw e;
+function uiCart(){
+  const box = $('#cart'); box.innerHTML = '';
+  let total = 0;
+  for(const it of cart){
+    total += it.unit_price * it.qty;
+    const row = document.createElement('div'); row.className = 'item';
+    row.innerHTML = `
+      <div><b>${it.title}</b><br><span class="badge">${it.option_label||''}</span></div>
+      <div>x ${it.qty}</div>
+      <div>${fmt(it.unit_price*it.qty)}</div>
+    `;
+    box.appendChild(row);
   }
-}
-
-async function fetchMe(){
-  const token = localStorage.getItem(LS_TOKEN);
-  if(!token){ me=null; $("#who").textContent="Gość"; $("#adminPanel").classList.add("hidden"); return; }
-  try{
-    me = await fetchJSON(`${API}/api/me`, {headers:{Authorization:`Bearer ${token}`}});
-    $("#who").textContent = me.username + (me.admin?" (admin)":"");
-    if(me.admin) $("#adminPanel").classList.remove("hidden");
-  }catch{
-    localStorage.removeItem(LS_TOKEN);
-    me=null; $("#who").textContent="Gość";
-  }
-}
-
-async function doLogin(code){
-  const data = await fetchJSON(`${API}/api/auth/by-code`, {
-    method:"POST", headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({code})
-  });
-  localStorage.setItem(LS_TOKEN, data.token);
-  await fetchMe();
+  $('#total').textContent = fmt(total);
 }
 
 async function loadProducts(){
-  const data = await fetchJSON(`${API}/api/products`);
-  products = data.items || [];
-  renderProducts();
+  const res = await fetch(API()+"/api/products");
+  const data = await res.json();
+  const wrap = $('#products'); wrap.innerHTML = '';
+  for(const p of data){
+    const el = document.createElement('div'); el.className='card';
+    el.innerHTML = `
+      ${p.image ? `<img src="${p.image}" alt="">` : `<div style="height:140px;border:1px dashed var(--outline);border-radius:10px;display:grid;place-items:center;color:var(--muted)">brak obrazka</div>`}
+      <h3>${p.title}</h3>
+      <div class="badge">${p.description||''}</div>
+      <div class="row">
+        <select class="opt"></select>
+        <input type="number" min="1" value="1" style="width:80px" />
+      </div>
+      <div class="row">
+        <button class="btn add">Dodaj</button>
+        <span class="badge">od ${fmt(p.base_price)}</span>
+      </div>
+    `;
+    const sel = $('.opt', el);
+    (p.options||[]).forEach(o=>{
+      const op = document.createElement('option');
+      op.value = o.label; op.dataset.price = o.price;
+      op.textContent = `${o.label} — ${fmt(o.price)}`;
+      sel.appendChild(op);
+    });
+    $('.add', el).onclick = ()=>{
+      const qty = Number($('input[type=number]', el).value||1);
+      const opt = sel.selectedOptions[0];
+      const price = Number(opt?.dataset.price || p.base_price || 0);
+      cart.push({
+        product_id: p.id,
+        option_label: opt?.value || null,
+        qty, unit_price: price, title: p.title
+      });
+      uiCart();
+    };
+    wrap.appendChild(el);
+  }
 }
 
-function productCard(p){
-  const img = p.image || "";
-  const optHtml = p.options.map((o,i)=>`<option value="${i}">${o.label} — ${money(o.price)}</option>`).join("");
-  return `
-  <article class="product">
-    <img src="${img}" alt="">
-    <div class="body">
-      <div class="title">${p.title}</div>
-      <div class="muted">${p.description||""}</div>
-      <select data-id="${p.id}" class="opt">${optHtml}</select>
-      <button class="btn green" data-add="${p.id}">Dodaj do koszyka</button>
-    </div>
-  </article>`;
-}
-
-function renderProducts(){ $("#list").innerHTML = products.map(productCard).join(""); }
-
-function renderCart(){
-  const wrap = $("#cartItems");
-  if(cart.length===0){ wrap.innerHTML = `<div class="muted">Koszyk jest pusty.</div>`; $("#sum").textContent=money(0); return; }
-  wrap.innerHTML = cart.map((it,idx)=>`
-    <div class="cartrow">
-      <img src="${it.image||''}" alt="">
-      <div>
-        <div><b>${it.title}</b></div>
-        <div class="muted">${it.variant}</div>
-      </div>
-      <div class="qty">
-        <button data-dec="${idx}">−</button>
-        <span>${it.qty}</span>
-        <button data-inc="${idx}">+</button>
-      </div>
-      <div><b>${money(it.price*it.qty)}</b></div>
-    </div>`).join("");
-  $("#sum").textContent = money(cart.reduce((a,b)=>a+b.qty*b.price,0));
+async function loginByCode(){
+  const code = $('#loginCode').value.trim();
+  if(!code) return;
+  $('#msg').textContent = 'Logowanie...';
+  try{
+    const res = await fetch(API()+"/api/auth/by-code", {
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({code})
+    });
+    if(!res.ok){ throw new Error(await res.text()); }
+    const data = await res.json();
+    jwtTok = data.token; localStorage.setItem('token', jwtTok);
+    $('#msg').textContent = 'Zalogowano.';
+    uiAuth();
+  }catch(e){
+    $('#msg').textContent = 'Błąd logowania: '+e.message;
+  }
 }
 
 async function submitOrder(){
-  const token = localStorage.getItem(LS_TOKEN);
-  if(!token){ $("#loginModal").classList.remove("hidden"); return; }
-  const payment = ($$("input[name=pay]")).find(x=>x.checked)?.value || "A";
-  const data = await fetchJSON(`${API}/api/order`, {
-    method:"POST",
-    headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
-    body: JSON.stringify({items:cart, payment})
-  });
-  if(data.bot_ok===false){
-    alert("Bot offline – zamówienie zapisane w kolejce. Admin je obsłuży.");
-  }else{
-    alert("Zamówienie wysłane! Ticket: " + (data.ticket_url||""));
+  if(!jwtTok){ $('#msg').textContent='Najpierw zaloguj się kodem z Discorda.'; return; }
+  if(!cart.length){ $('#msg').textContent='Koszyk jest pusty.'; return; }
+  const pay = $('input[name=pay]:checked')?.value || 'A';
+  $('#msg').textContent = 'Wysyłanie zamówienia...';
+  try{
+    const res = await fetch(API()+"/api/order",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer "+jwtTok
+      },
+      body: JSON.stringify({items: cart, payment: pay})
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data?.detail||res.statusText);
+    $('#msg').innerHTML = `✅ Zamówienie ${data.order_id} utworzone. <a href="${data.ticket_url}" target="_blank">Przejdź do ticketu</a>`;
+    cart = []; uiCart();
+  }catch(e){
+    $('#msg').textContent = 'Błąd zamówienia: '+e.message;
   }
-  setCart([]);
-  $("#cartModal").classList.add("hidden");
 }
 
-function addOptRow(label="", price="0.00", link=""){
-  const row = document.createElement("div");
-  row.className = "grid3";
-  row.innerHTML = `
-    <input placeholder="etykieta (np. 1 miesiąc)" value="${label}">
-    <input type="number" step="0.01" placeholder="cena" value="${price}">
-    <input placeholder="link docelowy (opcjonalnie)" value="${link}">
-  `;
-  $("#opts").appendChild(row);
-}
-
-async function adminSave(){
-  const token = localStorage.getItem(LS_TOKEN);
-  if(!token){ alert("Zaloguj się jako admin"); return; }
-
-  let image = $("#p_image").value.trim();
-  const file = $("#p_upload").files[0];
-  if(file){
-    const fd = new FormData();
-    fd.append("file", file);
-    const up = await fetchJSON(`${API}/api/upload`, {method:"POST", body:fd});
-    image = up.url;
-  }
-
-  const options = [...$("#opts").children].map(r=>{
-    const [a,b,c] = [...r.querySelectorAll("input")];
-    return {label:a.value.trim(), price:parseFloat(b.value||"0"), link:c.value.trim()||null}
-  }).filter(o=>o.label);
-
-  const body = {
-    id: $("#p_id").value.trim(),
-    title: $("#p_title").value.trim(),
-    description: $("#p_desc").value.trim(),
-    image,
-    options
+function bindUI(){
+  $('#confirmLogin').onclick = loginByCode;
+  $('#submitBtn').onclick = submitOrder;
+  $('#cancelBtn').onclick = ()=>{ cart=[]; uiCart(); };
+  $('#loginBtn').onclick = ()=>{ $('#loginCode').focus(); };
+  $('#logoutBtn').onclick = ()=>{
+    jwtTok=''; localStorage.removeItem('token');
+    uiAuth();
   };
-
-  await fetchJSON(`${API}/api/products`, {
-    method:"POST",
-    headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
-    body: JSON.stringify(body)
-  });
-  await loadProducts();
-  alert("Zapisano.");
 }
 
-document.addEventListener("click", async (e)=>{
-  const t = e.target;
-  if(t.matches("#btnCart")){ $("#cartModal").classList.remove("hidden"); renderCart(); }
-  if(t.matches("#cartCancel")){ $("#cartModal").classList.add("hidden"); }
-  if(t.matches("#btnLogin")){ $("#loginModal").classList.remove("hidden"); $("#loginErr").textContent=""; }
-  if(t.matches("#loginOk")){
-    try{ await doLogin($("#loginCode").value.trim()); $("#loginModal").classList.add("hidden"); location.hash="#shop"; }
-    catch(err){ $("#loginErr").textContent = String(err); }
-  }
-  if(t.matches("[data-add]")){
-    const id = t.getAttribute("data-add");
-    const p = products.find(x=>x.id===id);
-    const sel = t.parentElement.querySelector("select.opt");
-    const opt = p.options[parseInt(sel.value)];
-    const ex = cart.find(x=>x.id===p.id && x.variant===opt.label);
-    if(ex){ ex.qty+=1; } else { cart.push({id:p.id,title:p.title,variant:opt.label,price:opt.price,qty:1,image:p.image||""}); }
-    setCart(cart);
-  }
-  if(t.matches("[data-inc]")){ const i=+t.getAttribute("data-inc"); cart[i].qty++; setCart(cart); renderCart(); }
-  if(t.matches("[data-dec]")){ const i=+t.getAttribute("data-dec"); cart[i].qty=Math.max(1,cart[i].qty-1); setCart(cart); renderCart(); }
-  if(t.matches("#cartSubmit")){ try{ await submitOrder(); }catch(e){ alert("Błąd zamówienia: "+e); } }
-  if(t.matches("#optAdd")){ addOptRow(); }
-  if(t.matches("#optDel")){ const rows=[...$("#opts").children]; if(rows.length) rows.at(-1).remove(); }
-  if(t.matches("#btnSave")){ try{ await adminSave(); }catch(e){ alert("Błąd zapisu: "+e); } }
-});
-
-(async function(){
-  // Ostrzeżenie o mixed content
-  if(location.protocol==="https:" && API.startsWith("http://")){
-    warn("Ta strona jest na HTTPS, a API na HTTP – przeglądarka zablokuje połączenie. Wystaw API przez HTTPS albo uruchom frontend przez HTTP.");
-  }
-  addOptRow("1 miesiąc","10.00","");
-  try{ await fetchMe(); await loadProducts(); }catch(e){ warn("API niedostępne: "+e); }
-  setCart(cart);
-  if(location.hash==="#login") $("#loginModal").classList.remove("hidden");
+(async function start(){
+  bindUI();
+  uiAuth();
+  uiCart();
+  await loadProducts();
 })();
