@@ -1,6 +1,6 @@
 // ==== KONFIG ====
-// używamy relative-origin (ten sam host i port co strona) -> brak CORS/MixedContent
-const API_BASE = ""; // <= BYŁO "https://YOUR-API-HOST:8091"
+// UŻYJ TEGO SAMEGO ORIGINU CO STRONA → brak CORS/mixed-content.
+const API_BASE = "";
 
 // ==== STAN ====
 let TOKEN = localStorage.getItem("token") || "";
@@ -62,7 +62,7 @@ async function bootstrap() {
     await loadProducts();
     renderProducts();
   } catch (e) {
-    alert("Nie udało się pobrać produktów. Sprawdź API_BASE i CORS.\n" + e.message);
+    alert("Nie udało się pobrać produktów. Sprawdź, czy otwierasz stronę z tego samego hosta co API.\n" + e.message);
   }
   if (ME?.is_admin) showAdmin();
 }
