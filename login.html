@@ -9,22 +9,23 @@
 <body>
   <header class="topbar">
     <div class="brand">DS • Logowanie</div>
-    <nav class="grow"></nav>
-    <a class="btn ghost" href="./index.html">Sklep</a>
+    <div class="spacer"></div>
+    <div id="userBadge" class="badge">Gość</div>
+    <a class="btn btn-ghost" href="./index.html">Sklep</a>
   </header>
 
-  <main class="container center">
-    <div class="login-card card">
+  <main class="container">
+    <div class="card">
       <ol>
         <li>Na serwerze Discord kliknij <strong>Zaloguj</strong> pod wiadomością bota.</li>
         <li>Odbierz kod w DM.</li>
         <li>Wpisz kod niżej i kliknij <em>Zaloguj</em>. Zostaniesz przeniesiony do sklepu.</li>
       </ol>
-      <div class="row">
-        <input id="loginCode" placeholder="XXXX-XXXX-XXXX-XXXX" />
-        <button id="loginConfirm" class="btn primary">Zaloguj</button>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:12px;">
+        <input id="loginCode" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex:1" />
+        <button id="loginConfirm" class="btn btn-primary">Zaloguj</button>
       </div>
-      <div id="loginMsg" class="muted"></div>
+      <div id="loginMsg" class="muted" style="margin-top:8px;"></div>
     </div>
   </main>
 
