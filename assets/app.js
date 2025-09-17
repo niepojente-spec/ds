@@ -1,6 +1,4 @@
 // ==== KONFIG ====
-// Front na GitHub Pages (HTTPS) -> API przez HTTPS (proxy / reverse).
-// Jeśli masz inny cert/host, zmień poniższą linię:
 const API_BASE = "https://api.sparkedservers.us:8091";
 
 // ==== STAN ====
@@ -11,24 +9,30 @@ let CART = []; // {id, option_index, qty}
 
 // ==== UTYL ====
 const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
 const el = (tag, cls) => { const x = document.createElement(tag); if (cls) x.className = cls; return x; };
 const money = (v) => `${(Math.round(v * 100) / 100).toFixed(2)} zł`;
 
-async function api(path, opts = {}) {
-  const headers = { ...(opts.headers || {}) };
-  const hasBody = typeof opts.body !== "undefined" && !(opts.body instanceof FormData);
-  if (hasBody && !headers["Content-Type"]) {
-    headers["Content-Type"] = "application/json";
+function toastOk(msg) {
+  let box = $("#toast");
+  if (!box) {
+    box = el("div", "toast");
+    box.id = "toast";
+    document.body.appendChild(box);
   }
+  box.textContent = msg;
+  box.classList.remove("hide");
+  // krótka „zielona fala”
+  box.classList.add("show");
+  setTimeout(() => box.classList.add("hide"), 1800);
+  setTimeout(() => box.classList.remove("show"), 2000);
+}
 
+async function api(path, opts = {}) {
+  const headers = opts.headers ? {...opts.headers} : {};
+  if (!headers["Content-Type"] && !(opts.body instanceof FormData)) headers["Content-Type"] = "application/json";
   if (TOKEN) headers["Authorization"] = `Bearer ${TOKEN}`;
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    mode: "cors",
-    ...opts,
-    headers,
-  });
-
+  const res = await fetch(`${API_BASE}${path}`, { mode: "cors", ...opts, headers });
   if (!res.ok) {
     let txt = "";
     try { txt = await res.text(); } catch {}
@@ -38,16 +42,32 @@ async function api(path, opts = {}) {
   return res.json();
 }
 
+// ==== UI INIT ====
+window.addEventListener("DOMContentLoaded", async () => {
+  bindUI();
+  await bootstrap();
+});
 
 function bindUI() {
   $("#cartBtn")?.addEventListener("click", showCart);
   $("#cartCancel")?.addEventListener("click", closeCart);
   $("#cartConfirm")?.addEventListener("click", submitOrder);
 
+  // modal na index.html
   $("#loginBtn")?.addEventListener("click", () => toggleModal("#loginModal", true));
   $("#loginCancel")?.addEventListener("click", () => toggleModal("#loginModal", false));
   $("#loginConfirm")?.addEventListener("click", loginWithCode);
 
+  // przycisk na login.html
+  // (ten sam handler, działa i tu, i tam)
+  $("#loginConfirm")?.addEventListener("click", loginWithCode);
+
+  // ENTER w polu kodu
+  $("#loginCode")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") loginWithCode();
+  });
+
+  // admin
   $("#optAdd")?.addEventListener("click", addOptionRow);
   $("#optDel")?.addEventListener("click", removeLastOptionRow);
   $("#p_upload")?.addEventListener("click", uploadImage);
@@ -64,26 +84,33 @@ async function bootstrap() {
     alert("Nie udało się pobrać produktów. Sprawdź API_BASE i CORS.\n" + e.message);
   }
   if (ME?.is_admin) showAdmin();
+
+  // Jeśli jesteśmy na login.html – ustaw focus na polu kodu
+  $("#loginCode")?.focus();
 }
 
 function renderUser() {
   const badge = $("#userBadge");
-  if (!badge) return;
-
-  if (!ME) {
-    badge.textContent = "Gość";
-    $("#loginBtn")?.classList.remove("hidden");
-    return;
+  if (badge) {
+    if (ME) {
+      badge.textContent = `${ME.username ?? ME.user_id}${ME.is_admin ? " (admin)" : ""}`;
+      badge.classList.add("ok");
+    } else {
+      badge.textContent = "Gość";
+      badge.classList.remove("ok");
+    }
   }
+  const btn = $("#loginBtn");
+  if (btn) btn.classList.toggle("hidden", !!ME);
 
-  // spróbuj wyświetlić ładną nazwę; fallback na user_id
-  const display =
-    ME.user_tag || ME.username || ME.global_name || ME.user_name || ME.user_id;
-
-  badge.textContent = `${display}${ME.is_admin ? " (admin)" : ""}`;
-  $("#loginBtn")?.classList.add("hidden");
+  // login.html – pokaż komunikat „zalogowano”
+  if (ME && $("#loginMsg")) {
+    $("#loginMsg").textContent = `Zalogowano jako ${ME.username ?? ME.user_id}${ME.is_admin ? " (admin)" : ""}.`;
+    toastOk(`Zalogowano jako ${ME.username ?? ME.user_id}`);
+    // po 1.2s przejście do sklepu
+    setTimeout(() => (window.location.href = "./index.html"), 1200);
+  }
 }
-
 
 async function me() { return api("/api/me"); }
 
@@ -111,7 +138,7 @@ function renderProducts() {
     const desc = el("p"); desc.className = "muted"; desc.textContent = p.description || ""; card.appendChild(desc);
 
     const select = el("select");
-    p.options.forEach((o, idx) => {
+    p.options?.forEach((o, idx) => {
       const opt = el("option");
       opt.value = idx;
       opt.textContent = `${o.label} — ${money(o.price)}`;
@@ -121,7 +148,7 @@ function renderProducts() {
 
     const btn = el("button", "btn btn-primary");
     btn.textContent = "Dodaj do koszyka";
-    btn.onclick = () => { addToCart(p.id, parseInt(select.value, 10)); bumpCartBadge(); };
+    btn.onclick = () => { addToCart(p.id, parseInt(select.value, 10) || 0); bumpCartBadge(); };
     card.appendChild(btn);
 
     root.appendChild(card);
@@ -196,89 +223,25 @@ async function submitOrder() {
   } catch (e) { alert("Błąd zamówienia: " + e.message); }
 }
 
-function makeEl(tag, cls, html) {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (html) n.innerHTML = html;
-  return n;
-}
-
-function showLoginSuccess(name) {
-  // overlay
-  const wrap = makeEl("div", "login-success-overlay");
-  const card = makeEl(
-    "div",
-    "login-success-card",
-    `<div class="login-check">✔</div>
-     <div class="login-title">Zalogowano</div>
-     <div class="login-sub">jako <b>${name}</b></div>`
-  );
-  wrap.appendChild(card);
-
-  // „zielone tekstury”/cząsteczki
-  for (let i = 0; i < 30; i++) {
-    const p = makeEl("div", "confetti");
-    p.style.left = Math.random() * 100 + "vw";
-    p.style.animationDelay = (Math.random() * 0.6).toFixed(2) + "s";
-    p.style.animationDuration = (1.2 + Math.random() * 0.9).toFixed(2) + "s";
-    wrap.appendChild(p);
-  }
-
-  document.body.appendChild(wrap);
-
-  // auto hide / redirect z login.html po 1.2s
-  setTimeout(() => {
-    const onLoginPage = /\/login(\.html)?$/i.test(location.pathname);
-    if (onLoginPage) {
-      location.href = "./index.html";
-    } else {
-      wrap.remove();
-    }
-  }, 1200);
-}
-
-
-// ==== LOGIN ====
 // ==== LOGIN ====
 async function loginWithCode() {
-  const btn = $("#loginConfirm");
-  const input = $("#loginCode");
-  const code = input?.value.trim();
-
+  const codeInput = $("#loginCode");
+  const code = codeInput?.value.trim();
   if (!code) return;
+  // Ujednolicenie formatu: XXXX-XXXX-XXXX-XXXX
+  const norm = code.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const pretty = `${norm.slice(0,4)}-${norm.slice(4,8)}-${norm.slice(8,12)}-${norm.slice(12,16)}`;
 
   try {
-    btn && (btn.disabled = true);
-    input && (input.disabled = true);
-
-    const res = await api("/api/auth/by-code", {
-      method: "POST",
-      body: JSON.stringify({ code }),
-    });
-
-    TOKEN = res.token;
-    localStorage.setItem("token", TOKEN);
-
-    // pobierz profil, pokaż badge i animację
-    ME = await me();
-    renderUser();
-
-    // zamknij modal na indexie
+    const res = await api("/api/auth/by-code", { method: "POST", body: JSON.stringify({ code: pretty }) });
+    TOKEN = res.token; localStorage.setItem("token", TOKEN);
+    ME = await me(); renderUser();
+    // jeśli jesteśmy na modalu indexu – zamknij go
     toggleModal("#loginModal", false);
-
-    // pokaż „Zalogowano jako …”
-    const display =
-      ME?.user_tag || ME?.username || ME?.global_name || ME?.user_name || ME?.user_id || "użytkownik";
-    showLoginSuccess(display);
   } catch (e) {
     alert("Nie udało się zalogować: " + e.message);
-  } finally {
-    btn && (btn.disabled = false);
-    input && (input.disabled = false);
   }
 }
-
-
 
 // ==== ADMIN ====
 function showAdmin() {
@@ -325,11 +288,3 @@ async function saveProduct() {
     await loadProducts(); renderProducts(); alert("Zapisano produkt.");
   } catch (e) { alert("Błąd zapisu: " + e.message); }
 }
-
-document.addEventListener("DOMContentLoaded", () => {
-  const input = $("#loginCode");
-  input?.addEventListener("keydown", (ev) => {
-    if (ev.key === "Enter") loginWithCode();
-  });
-});
-
