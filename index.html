@@ -24,46 +24,30 @@
   <section id="adminPanel" class="card hidden">
     <h2>Panel admina</h2>
 
-    <div class="form-row">
-      <label>ID</label>
-      <input id="p_id" placeholder="unikalne-id" />
-    </div>
-    <div class="form-row">
-      <label>Tytuł</label>
-      <input id="p_title" placeholder="nazwa produktu" />
-    </div>
-    <div class="form-row">
-      <label>Obrazek (URL)</label>
-      <input id="p_image" placeholder="https://..." />
-    </div>
+    <div class="form-row"><label>ID</label><input id="p_id" placeholder="unikalne-id" /></div>
+    <div class="form-row"><label>Tytuł</label><input id="p_title" placeholder="nazwa produktu" /></div>
+    <div class="form-row"><label>Obrazek (URL)</label><input id="p_image" placeholder="https://..." /></div>
     <div class="form-row">
       <label>lub Upload</label>
       <input id="p_file" type="file" />
       <button id="p_upload" class="btn">Wyślij</button>
     </div>
-    <div class="form-row">
-      <label>Opis</label>
-      <textarea id="p_desc" placeholder="krótki opis…"></textarea>
-    </div>
+    <div class="form-row"><label>Opis</label><textarea id="p_desc" placeholder="krótki opis…"></textarea></div>
 
     <div id="optList"></div>
     <div class="opts-toolbar">
       <button id="optDel" class="btn btn-danger">– Usuń opcję</button>
       <button id="optAdd" class="btn">+ Opcja</button>
     </div>
-
-    <div class="actions">
-      <button id="saveProduct" class="btn btn-primary">Zapisz produkt</button>
-    </div>
+    <div class="actions"><button id="saveProduct" class="btn btn-primary">Zapisz produkt</button></div>
   </section>
 </main>
 
-<!-- Koszyk (modal) -->
+<!-- Koszyk -->
 <div id="cartModal" class="modal hidden">
   <div class="modal-card">
     <h3>Twój koszyk</h3>
     <div id="cartItems"></div>
-
     <div class="pay-box">
       <div>
         <div class="muted">Metoda płatności</div>
@@ -73,27 +57,17 @@
       </div>
       <div class="total">Razem: <b id="cartTotal">0.00 zł</b></div>
     </div>
-
-    <div class="actions">
-      <button id="cartCancel" class="btn">Anuluj</button>
-      <button id="cartConfirm" class="btn btn-primary">Zatwierdź</button>
-    </div>
+    <div class="actions"><button id="cartCancel" class="btn">Anuluj</button><button id="cartConfirm" class="btn btn-primary">Zatwierdź</button></div>
   </div>
 </div>
 
-<!-- Login (modal) -->
+<!-- Login -->
 <div id="loginModal" class="modal hidden">
   <div class="modal-card">
     <h3>Logowanie</h3>
     <p>Na Discordzie użyj komendy <code>/login</code> — bot wyśle Ci kod i link do tej strony.</p>
-    <div class="form-row">
-      <label>Kod</label>
-      <input id="loginCode" placeholder="wklej kod z Discorda" />
-    </div>
-    <div class="actions">
-      <button id="loginCancel" class="btn">Anuluj</button>
-      <button id="loginConfirm" class="btn btn-primary">Zaloguj</button>
-    </div>
+    <div class="form-row"><label>Kod</label><input id="loginCode" placeholder="wklej kod z Discorda" /></div>
+    <div class="actions"><button id="loginCancel" class="btn">Anuluj</button><button id="loginConfirm" class="btn btn-primary">Zaloguj</button></div>
   </div>
 </div>
 
