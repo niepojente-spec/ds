@@ -1,6 +1,7 @@
 // ==== KONFIG ====
-// UŻYJ TEGO SAMEGO ORIGINU CO STRONA → brak CORS/mixed-content.
-const API_BASE = "";
+// Front na GitHub Pages (HTTPS) -> API przez HTTPS (proxy / reverse).
+// Jeśli masz inny cert/host, zmień poniższą linię:
+const API_BASE = "https://api.sparkedservers.us:8091";
 
 // ==== STAN ====
 let TOKEN = localStorage.getItem("token") || "";
@@ -10,20 +11,17 @@ let CART = []; // {id, option_index, qty}
 
 // ==== UTYL ====
 const $ = (sel) => document.querySelector(sel);
-const el = (tag, cls) => {
-  const x = document.createElement(tag);
-  if (cls) x.className = cls;
-  return x;
-};
+const el = (tag, cls) => { const x = document.createElement(tag); if (cls) x.className = cls; return x; };
 const money = (v) => `${(Math.round(v * 100) / 100).toFixed(2)} zł`;
 
 async function api(path, opts = {}) {
-  const headers = opts.headers || {};
+  const headers = opts.headers ? {...opts.headers} : {};
+  if (!headers["Content-Type"] && !(opts.body instanceof FormData)) headers["Content-Type"] = "application/json";
   if (TOKEN) headers["Authorization"] = `Bearer ${TOKEN}`;
-  headers["Content-Type"] = headers["Content-Type"] || "application/json";
-  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+  const res = await fetch(`${API_BASE}${path}`, { mode: "cors", ...opts, headers });
   if (!res.ok) {
-    const txt = await res.text().catch(() => "");
+    let txt = "";
+    try { txt = await res.text(); } catch {}
     throw new Error(`${res.status} ${res.statusText} – ${txt}`);
   }
   if (res.status === 204) return null;
@@ -37,54 +35,52 @@ window.addEventListener("DOMContentLoaded", async () => {
 });
 
 function bindUI() {
-  $("#cartBtn").onclick = showCart;
-  $("#cartCancel").onclick = closeCart;
-  $("#cartConfirm").onclick = submitOrder;
+  $("#cartBtn")?.addEventListener("click", showCart);
+  $("#cartCancel")?.addEventListener("click", closeCart);
+  $("#cartConfirm")?.addEventListener("click", submitOrder);
 
-  $("#loginBtn").onclick = () => toggleModal("#loginModal", true);
-  $("#loginCancel").onclick = () => toggleModal("#loginModal", false);
-  $("#loginConfirm").onclick = loginWithCode;
+  $("#loginBtn")?.addEventListener("click", () => toggleModal("#loginModal", true));
+  $("#loginCancel")?.addEventListener("click", () => toggleModal("#loginModal", false));
+  $("#loginConfirm")?.addEventListener("click", loginWithCode);
 
-  $("#optAdd").onclick = addOptionRow;
-  $("#optDel").onclick = removeLastOptionRow;
-  $("#p_upload").onclick = uploadImage;
-  $("#saveProduct").onclick = saveProduct;
+  $("#optAdd")?.addEventListener("click", addOptionRow);
+  $("#optDel")?.addEventListener("click", removeLastOptionRow);
+  $("#p_upload")?.addEventListener("click", uploadImage);
+  $("#saveProduct")?.addEventListener("click", saveProduct);
 }
 
 async function bootstrap() {
-  try {
-    ME = await me();
-  } catch {
-    ME = null;
-  }
+  try { ME = await me(); } catch { ME = null; }
   renderUser();
   try {
     await loadProducts();
     renderProducts();
   } catch (e) {
-    alert("Nie udało się pobrać produktów. Sprawdź, czy otwierasz stronę z tego samego hosta co API.\n" + e.message);
+    alert("Nie udało się pobrać produktów. Sprawdź API_BASE i CORS.\n" + e.message);
   }
   if (ME?.is_admin) showAdmin();
 }
 
 function renderUser() {
-  $("#userBadge").textContent = ME ? `${ME.user_id}${ME.is_admin ? " (admin)" : ""}` : "Gość";
-  $("#loginBtn").classList.toggle("hidden", !!ME);
+  const badge = $("#userBadge");
+  if (badge) badge.textContent = ME ? `${ME.user_id}${ME.is_admin ? " (admin)" : ""}` : "Gość";
+  const btn = $("#loginBtn");
+  if (btn) btn.classList.toggle("hidden", !!ME);
 }
 
-async function me() {
-  return api("/api/me");
-}
+async function me() { return api("/api/me"); }
 
 async function loadProducts() {
-  PRODUCTS = await api("/api/products", { method: "GET", headers: { "Content-Type": "application/json" } });
+  PRODUCTS = await api("/api/products", { method: "GET" });
 }
 
 function renderProducts() {
   const root = $("#products");
+  if (!root) return;
   root.innerHTML = "";
   for (const p of PRODUCTS) {
     const card = el("div", "card product");
+
     const imgWrap = el("div", "product-img");
     const img = el("img");
     img.loading = "lazy";
@@ -93,14 +89,9 @@ function renderProducts() {
     imgWrap.appendChild(img);
     card.appendChild(imgWrap);
 
-    const title = el("h3");
-    title.textContent = p.title;
-    card.appendChild(title);
+    const title = el("h3"); title.textContent = p.title; card.appendChild(title);
 
-    const desc = el("p");
-    desc.className = "muted";
-    desc.textContent = p.description || "";
-    card.appendChild(desc);
+    const desc = el("p"); desc.className = "muted"; desc.textContent = p.description || ""; card.appendChild(desc);
 
     const select = el("select");
     p.options.forEach((o, idx) => {
@@ -113,10 +104,7 @@ function renderProducts() {
 
     const btn = el("button", "btn btn-primary");
     btn.textContent = "Dodaj do koszyka";
-    btn.onclick = () => {
-      addToCart(p.id, parseInt(select.value, 10));
-      bumpCartBadge();
-    };
+    btn.onclick = () => { addToCart(p.id, parseInt(select.value, 10)); bumpCartBadge(); };
     card.appendChild(btn);
 
     root.appendChild(card);
@@ -125,35 +113,25 @@ function renderProducts() {
 
 function addToCart(id, option_index, qty = 1) {
   const ex = CART.find((x) => x.id === id && x.option_index === option_index);
-  if (ex) ex.qty += qty;
-  else CART.push({ id, option_index, qty });
+  if (ex) ex.qty += qty; else CART.push({ id, option_index, qty });
 }
 
 function bumpCartBadge() {
-  $("#cartCount").textContent = CART.reduce((a, b) => a + b.qty, 0);
+  const n = CART.reduce((a, b) => a + b.qty, 0);
+  const b = $("#cartCount"); if (b) b.textContent = n;
 }
 
-function toggleModal(sel, on) {
-  const m = $(sel);
-  m.classList.toggle("hidden", !on);
-}
-
-function showCart() {
-  renderCart();
-  toggleModal("#cartModal", true);
-}
-function closeCart() {
-  toggleModal("#cartModal", false);
-}
+function toggleModal(sel, on) { const m = $(sel); if (m) m.classList.toggle("hidden", !on); }
+function showCart() { renderCart(); toggleModal("#cartModal", true); }
+function closeCart() { toggleModal("#cartModal", false); }
 
 function renderCart() {
-  const box = $("#cartItems");
+  const box = $("#cartItems"); if (!box) return;
   box.innerHTML = "";
   let total = 0;
 
   for (const row of CART) {
-    const p = PRODUCTS.find((x) => x.id === row.id);
-    if (!p) continue;
+    const p = PRODUCTS.find((x) => x.id === row.id); if (!p) continue;
     const opt = p.options[row.option_index];
     const price = opt.price * row.qty;
     total += price;
@@ -177,61 +155,39 @@ function renderCart() {
     qtyBox.append(minus, num, plus);
     item.appendChild(qtyBox);
 
-    const priceBox = el("div", "price");
-    priceBox.textContent = money(price);
-    item.appendChild(priceBox);
+    const priceBox = el("div", "price"); priceBox.textContent = money(price); item.appendChild(priceBox);
 
-    const rm = el("button", "btn btn-ghost");
-    rm.textContent = "✕";
+    const rm = el("button", "btn btn-ghost"); rm.textContent = "✕";
     rm.onclick = () => { CART = CART.filter(x => x !== row); renderCart(); bumpCartBadge(); };
     item.appendChild(rm);
 
     box.appendChild(item);
   }
 
-  $("#cartTotal").textContent = money(total);
+  const totalBox = $("#cartTotal"); if (totalBox) totalBox.textContent = money(total);
 }
 
 async function submitOrder() {
-  if (!ME) {
-    alert("Najpierw się zaloguj.");
-    return;
-  }
-  if (!CART.length) {
-    alert("Koszyk jest pusty.");
-    return;
-  }
+  if (!ME) return alert("Najpierw się zaloguj.");
+  if (!CART.length) return alert("Koszyk jest pusty.");
   const pay = document.querySelector('input[name="pay"]:checked')?.value || "A";
   try {
-    const payload = {
-      items: CART.map((x) => ({ id: x.id, option_index: x.option_index, qty: x.qty })),
-      payment: pay,
-    };
+    const payload = { items: CART.map(x => ({ id: x.id, option_index: x.option_index, qty: x.qty })), payment: pay };
     const res = await api("/api/order", { method: "POST", body: JSON.stringify(payload) });
     alert(`Zamówienie przyjęte! Ticket: ${res.ticket_url}`);
-    CART = [];
-    bumpCartBadge();
-    closeCart();
-  } catch (e) {
-    alert("Błąd zamówienia: " + e.message);
-  }
+    CART = []; bumpCartBadge(); closeCart();
+  } catch (e) { alert("Błąd zamówienia: " + e.message); }
 }
 
 // ==== LOGIN ====
 async function loginWithCode() {
-  const code = $("#loginCode").value.trim();
+  const code = $("#loginCode")?.value.trim();
   if (!code) return;
   try {
-    const res = await api("/api/auth/by-code", {
-      method: "POST",
-      body: JSON.stringify({ code }),
-      headers: { "Content-Type": "application/json" },
-    });
-    TOKEN = res.token;
-    localStorage.setItem("token", TOKEN);
+    const res = await api("/api/auth/by-code", { method: "POST", body: JSON.stringify({ code }) });
+    TOKEN = res.token; localStorage.setItem("token", TOKEN);
     toggleModal("#loginModal", false);
-    ME = await me();
-    renderUser();
+    ME = await me(); renderUser();
   } catch (e) {
     alert("Nie udało się zalogować: " + e.message);
   }
@@ -239,10 +195,9 @@ async function loginWithCode() {
 
 // ==== ADMIN ====
 function showAdmin() {
-  $("#adminPanel").classList.remove("hidden");
-  if (!$("#optList").children.length) addOptionRow();
+  const p = $("#adminPanel"); if (p) p.classList.remove("hidden");
+  if (!$("#optList")?.children.length) addOptionRow();
 }
-
 function optionRow(label = "1 miesiąc", price = 10, target = "") {
   const row = el("div", "opt-row");
   row.innerHTML = `
@@ -252,31 +207,19 @@ function optionRow(label = "1 miesiąc", price = 10, target = "") {
   `;
   return row;
 }
-
-function addOptionRow() {
-  $("#optList").appendChild(optionRow());
-}
-function removeLastOptionRow() {
-  const list = $("#optList");
-  if (list.lastElementChild) list.removeChild(list.lastElementChild);
-}
+function addOptionRow() { $("#optList").appendChild(optionRow()); }
+function removeLastOptionRow() { const list = $("#optList"); if (list.lastElementChild) list.removeChild(list.lastElementChild); }
 
 async function uploadImage() {
-  const f = $("#p_file").files[0];
-  if (!f) return;
+  const f = $("#p_file")?.files?.[0]; if (!f) return;
   try {
-    const fd = new FormData();
-    fd.append("file", f);
-    const headers = {};
-    if (TOKEN) headers["Authorization"] = `Bearer ${TOKEN}`;
-    const res = await fetch(`${API_BASE}/api/upload`, { method: "POST", body: fd, headers });
+    const fd = new FormData(); fd.append("file", f);
+    const headers = {}; if (TOKEN) headers["Authorization"] = `Bearer ${TOKEN}`;
+    const res = await fetch(`${API_BASE}/api/upload`, { method: "POST", body: fd, headers, mode: "cors" });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
-    $("#p_image").value = data.url;
-    alert("Wgrano obrazek.");
-  } catch (e) {
-    alert("Upload nie powiódł się: " + e.message);
-  }
+    $("#p_image").value = data.url; alert("Wgrano obrazek.");
+  } catch (e) { alert("Upload nie powiódł się: " + e.message); }
 }
 
 async function saveProduct() {
@@ -284,25 +227,14 @@ async function saveProduct() {
   const title = $("#p_title").value.trim();
   const image = $("#p_image").value.trim();
   const description = $("#p_desc").value.trim();
-  const options = [...$("#optList").children].map((row) => {
+  const options = [...$("#optList").children].map(row => {
     const [l, p, t] = row.querySelectorAll("input");
     return { label: l.value.trim(), price: parseFloat(p.value || "0"), target: t.value.trim() || null };
   });
-
-  if (!id || !title || !options.length) {
-    alert("Uzupełnij ID, tytuł i co najmniej jedną opcję.");
-    return;
-  }
+  if (!id || !title || !options.length) return alert("Uzupełnij ID, tytuł i co najmniej jedną opcję.");
 
   try {
-    await api("/api/products", {
-      method: "POST",
-      body: JSON.stringify({ id, title, image: image || null, description, options }),
-    });
-    await loadProducts();
-    renderProducts();
-    alert("Zapisano produkt.");
-  } catch (e) {
-    alert("Błąd zapisu: " + e.message);
-  }
+    await api("/api/products", { method: "POST", body: JSON.stringify({ id, title, image: image || null, description, options }) });
+    await loadProducts(); renderProducts(); alert("Zapisano produkt.");
+  } catch (e) { alert("Błąd zapisu: " + e.message); }
 }
