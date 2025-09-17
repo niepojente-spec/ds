@@ -239,39 +239,45 @@ function showLoginSuccess(name) {
 
 
 // ==== LOGIN ====
+// ==== LOGIN ====
 async function loginWithCode() {
-  const code = $("#loginCode")?.value.trim();
+  const btn = $("#loginConfirm");
+  const input = $("#loginCode");
+  const code = input?.value.trim();
+
   if (!code) return;
 
   try {
-    const res = await api("/api/auth/by-code", { method: "POST", body: JSON.stringify({ code }) });
+    btn && (btn.disabled = true);
+    input && (input.disabled = true);
+
+    const res = await api("/api/auth/by-code", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+
     TOKEN = res.token;
     localStorage.setItem("token", TOKEN);
 
-    // jeśli jesteśmy na login.html – przenieś do sklepu
-    const p = location.pathname.toLowerCase();
-    const onLoginPage = p.endsWith("/login") || p.endsWith("/login.html");
-    if (onLoginPage) {
-      location.href = "./index.html";
-      return;
-    }
-
-    // SPA (modal na indexie)
-    toggleModal("#loginModal", false);
+    // pobierz profil, pokaż badge i animację
     ME = await me();
     renderUser();
+
+    // zamknij modal na indexie
+    toggleModal("#loginModal", false);
+
+    // pokaż „Zalogowano jako …”
+    const display =
+      ME?.user_tag || ME?.username || ME?.global_name || ME?.user_name || ME?.user_id || "użytkownik";
+    showLoginSuccess(display);
   } catch (e) {
     alert("Nie udało się zalogować: " + e.message);
+  } finally {
+    btn && (btn.disabled = false);
+    input && (input.disabled = false);
   }
 }
 
-// opcjonalnie: zatwierdzanie Enterem w polu kodu
-document.addEventListener("DOMContentLoaded", () => {
-  const input = $("#loginCode");
-  input?.addEventListener("keydown", (ev) => {
-    if (ev.key === "Enter") loginWithCode();
-  });
-});
 
 
 // ==== ADMIN ====
