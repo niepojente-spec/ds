@@ -68,10 +68,22 @@ async function bootstrap() {
 
 function renderUser() {
   const badge = $("#userBadge");
-  if (badge) badge.textContent = ME ? `${ME.user_id}${ME.is_admin ? " (admin)" : ""}` : "Gość";
-  const btn = $("#loginBtn");
-  if (btn) btn.classList.toggle("hidden", !!ME);
+  if (!badge) return;
+
+  if (!ME) {
+    badge.textContent = "Gość";
+    $("#loginBtn")?.classList.remove("hidden");
+    return;
+  }
+
+  // spróbuj wyświetlić ładną nazwę; fallback na user_id
+  const display =
+    ME.user_tag || ME.username || ME.global_name || ME.user_name || ME.user_id;
+
+  badge.textContent = `${display}${ME.is_admin ? " (admin)" : ""}`;
+  $("#loginBtn")?.classList.add("hidden");
 }
+
 
 async function me() { return api("/api/me"); }
 
