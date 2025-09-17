@@ -196,6 +196,48 @@ async function submitOrder() {
   } catch (e) { alert("Błąd zamówienia: " + e.message); }
 }
 
+function makeEl(tag, cls, html) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (html) n.innerHTML = html;
+  return n;
+}
+
+function showLoginSuccess(name) {
+  // overlay
+  const wrap = makeEl("div", "login-success-overlay");
+  const card = makeEl(
+    "div",
+    "login-success-card",
+    `<div class="login-check">✔</div>
+     <div class="login-title">Zalogowano</div>
+     <div class="login-sub">jako <b>${name}</b></div>`
+  );
+  wrap.appendChild(card);
+
+  // „zielone tekstury”/cząsteczki
+  for (let i = 0; i < 30; i++) {
+    const p = makeEl("div", "confetti");
+    p.style.left = Math.random() * 100 + "vw";
+    p.style.animationDelay = (Math.random() * 0.6).toFixed(2) + "s";
+    p.style.animationDuration = (1.2 + Math.random() * 0.9).toFixed(2) + "s";
+    wrap.appendChild(p);
+  }
+
+  document.body.appendChild(wrap);
+
+  // auto hide / redirect z login.html po 1.2s
+  setTimeout(() => {
+    const onLoginPage = /\/login(\.html)?$/i.test(location.pathname);
+    if (onLoginPage) {
+      location.href = "./index.html";
+    } else {
+      wrap.remove();
+    }
+  }, 1200);
+}
+
+
 // ==== LOGIN ====
 async function loginWithCode() {
   const code = $("#loginCode")?.value.trim();
