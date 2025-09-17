@@ -15,10 +15,20 @@ const el = (tag, cls) => { const x = document.createElement(tag); if (cls) x.cla
 const money = (v) => `${(Math.round(v * 100) / 100).toFixed(2)} zł`;
 
 async function api(path, opts = {}) {
-  const headers = opts.headers ? {...opts.headers} : {};
-  if (!headers["Content-Type"] && !(opts.body instanceof FormData)) headers["Content-Type"] = "application/json";
+  const headers = { ...(opts.headers || {}) };
+  const hasBody = typeof opts.body !== "undefined" && !(opts.body instanceof FormData);
+  if (hasBody && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
   if (TOKEN) headers["Authorization"] = `Bearer ${TOKEN}`;
-  const res = await fetch(`${API_BASE}${path}`, { mode: "cors", ...opts, headers });
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    mode: "cors",
+    ...opts,
+    headers,
+  });
+
   if (!res.ok) {
     let txt = "";
     try { txt = await res.text(); } catch {}
@@ -28,11 +38,6 @@ async function api(path, opts = {}) {
   return res.json();
 }
 
-// ==== UI INIT ====
-window.addEventListener("DOMContentLoaded", async () => {
-  bindUI();
-  await bootstrap();
-});
 
 function bindUI() {
   $("#cartBtn")?.addEventListener("click", showCart);
