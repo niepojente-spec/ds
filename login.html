@@ -4,27 +4,22 @@
   <meta charset="utf-8" />
   <title>Logowanie — Sklep Discord</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="./assets/style.css" />
+  <link rel="stylesheet" href="./assets/styles.css" />
 </head>
 <body>
   <header class="topbar">
     <div class="brand">DS • Logowanie</div>
-    <nav class="grow"></nav>
-    <a class="btn ghost" href="./index.html">Sklep</a>
+    <div class="spacer"></div>
+    <a class="btn btn-ghost" href="./index.html">Sklep</a>
   </header>
 
-  <main class="container center">
-    <div class="login-card card">
+  <main class="container">
+    <div class="card">
       <ol>
-        <li>Na serwerze Discord wejdź na kanał <strong>#zaloguj</strong> i kliknij przycisk <em>Zaloguj</em>.</li>
-        <li>Sprawdź DM od bota — dostaniesz kod i link do tej strony.</li>
-        <li>Wpisz kod niżej i kliknij <em>Zaloguj</em>. Zostaniesz przeniesiony do sklepu.</li>
+        <li>Na serwerze Discord użyj komendy <strong>/login</strong>.</li>
+        <li>Odbierz kod w DM od bota.</li>
+        <li>Wpisz kod w modalu logowania na stronie sklepu.</li>
       </ol>
-      <div class="row">
-        <input id="otpInput" placeholder="XXXX-XXXX-XXXX-XXXX" />
-        <button id="otpBtn" class="btn primary">Zaloguj</button>
-      </div>
-      <div id="loginMsg" class="muted"></div>
     </div>
   </main>
 
