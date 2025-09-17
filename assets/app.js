@@ -188,15 +188,37 @@ async function submitOrder() {
 async function loginWithCode() {
   const code = $("#loginCode")?.value.trim();
   if (!code) return;
+
   try {
     const res = await api("/api/auth/by-code", { method: "POST", body: JSON.stringify({ code }) });
-    TOKEN = res.token; localStorage.setItem("token", TOKEN);
+    TOKEN = res.token;
+    localStorage.setItem("token", TOKEN);
+
+    // jeśli jesteśmy na login.html – przenieś do sklepu
+    const p = location.pathname.toLowerCase();
+    const onLoginPage = p.endsWith("/login") || p.endsWith("/login.html");
+    if (onLoginPage) {
+      location.href = "./index.html";
+      return;
+    }
+
+    // SPA (modal na indexie)
     toggleModal("#loginModal", false);
-    ME = await me(); renderUser();
+    ME = await me();
+    renderUser();
   } catch (e) {
     alert("Nie udało się zalogować: " + e.message);
   }
 }
+
+// opcjonalnie: zatwierdzanie Enterem w polu kodu
+document.addEventListener("DOMContentLoaded", () => {
+  const input = $("#loginCode");
+  input?.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") loginWithCode();
+  });
+});
+
 
 // ==== ADMIN ====
 function showAdmin() {
