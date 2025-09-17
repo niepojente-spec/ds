@@ -325,3 +325,11 @@ async function saveProduct() {
     await loadProducts(); renderProducts(); alert("Zapisano produkt.");
   } catch (e) { alert("Błąd zapisu: " + e.message); }
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  const input = $("#loginCode");
+  input?.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") loginWithCode();
+  });
+});
+
