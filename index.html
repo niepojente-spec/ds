@@ -1,66 +1,102 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DS • Sklep</title>
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./assets/styles.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="container">
-      <h1>DS • Sklep</h1>
-      <div id="authBox">
-        <span id="userInfo">Gość</span>
-        <button id="loginBtn" class="btn">Zaloguj</button>
-        <button id="logoutBtn" class="btn btn-outline hidden">Wyloguj</button>
-      </div>
+<header class="topbar">
+  <div class="brand">DS • Sklep</div>
+  <div class="spacer"></div>
+  <div id="userBadge" class="badge">Gość</div>
+  <button id="loginBtn" class="btn btn-ghost">Zaloguj</button>
+  <button id="cartBtn" class="btn btn-cart"><span>🛒</span><b id="cartCount">0</b></button>
+</header>
+
+<main class="container">
+  <section>
+    <h2>Nasze produkty</h2>
+    <div id="products" class="grid"></div>
+  </section>
+
+  <section id="adminPanel" class="card hidden">
+    <h2>Panel admina</h2>
+
+    <div class="form-row">
+      <label>ID</label>
+      <input id="p_id" placeholder="unikalne-id" />
     </div>
-  </header>
+    <div class="form-row">
+      <label>Tytuł</label>
+      <input id="p_title" placeholder="nazwa produktu" />
+    </div>
+    <div class="form-row">
+      <label>Obrazek (URL)</label>
+      <input id="p_image" placeholder="https://..." />
+    </div>
+    <div class="form-row">
+      <label>lub Upload</label>
+      <input id="p_file" type="file" />
+      <button id="p_upload" class="btn">Wyślij</button>
+    </div>
+    <div class="form-row">
+      <label>Opis</label>
+      <textarea id="p_desc" placeholder="krótki opis…"></textarea>
+    </div>
 
-  <main class="container grid">
-    <section>
-      <h2>Nasze produkty</h2>
-      <div id="products" class="cards"></div>
-    </section>
+    <div id="optList"></div>
+    <div class="opts-toolbar">
+      <button id="optDel" class="btn btn-danger">– Usuń opcję</button>
+      <button id="optAdd" class="btn">+ Opcja</button>
+    </div>
 
-    <aside>
-      <h2>Twój koszyk</h2>
-      <div id="cart"></div>
-      <div class="pay">
-        <p>Metoda płatności</p>
+    <div class="actions">
+      <button id="saveProduct" class="btn btn-primary">Zapisz produkt</button>
+    </div>
+  </section>
+</main>
+
+<!-- Koszyk (modal) -->
+<div id="cartModal" class="modal hidden">
+  <div class="modal-card">
+    <h3>Twój koszyk</h3>
+    <div id="cartItems"></div>
+
+    <div class="pay-box">
+      <div>
+        <div class="muted">Metoda płatności</div>
         <label><input type="radio" name="pay" value="A" checked /> Płatność A</label>
         <label><input type="radio" name="pay" value="B" /> Płatność B</label>
         <label><input type="radio" name="pay" value="C" /> Płatność C</label>
       </div>
-      <div class="total">
-        Razem: <b id="total">0.00 zł</b>
-      </div>
-      <div class="row">
-        <button id="cancelBtn" class="btn btn-outline">Anuluj</button>
-        <button id="submitBtn" class="btn">Zatwierdź</button>
-      </div>
+      <div class="total">Razem: <b id="cartTotal">0.00 zł</b></div>
+    </div>
 
-      <h3>Logowanie</h3>
-      <ol class="hint">
-        <li>Na Discordzie wpisz <code>login</code> – bot poda kod i link.</li>
-        <li>Przepisz kod tutaj i zatwierdź.</li>
-      </ol>
-      <div class="row">
-        <input id="loginCode" placeholder="6-cyfrowy kod" maxlength="16" />
-        <button id="confirmLogin" class="btn btn-outline">Zaloguj</button>
-      </div>
-      <p id="msg" class="msg"></p>
-    </aside>
-  </main>
+    <div class="actions">
+      <button id="cartCancel" class="btn">Anuluj</button>
+      <button id="cartConfirm" class="btn btn-primary">Zatwierdź</button>
+    </div>
+  </div>
+</div>
 
-  <footer class="container foot">
-    <small>© DS</small>
-  </footer>
+<!-- Login (modal) -->
+<div id="loginModal" class="modal hidden">
+  <div class="modal-card">
+    <h3>Logowanie</h3>
+    <p>Na Discordzie użyj komendy <code>/login</code> — bot wyśle Ci kod i link do tej strony.</p>
+    <div class="form-row">
+      <label>Kod</label>
+      <input id="loginCode" placeholder="wklej kod z Discorda" />
+    </div>
+    <div class="actions">
+      <button id="loginCancel" class="btn">Anuluj</button>
+      <button id="loginConfirm" class="btn btn-primary">Zaloguj</button>
+    </div>
+  </div>
+</div>
 
-  <script>
-    window.API_BASE = "http://"+location.hostname+":8091"; /* panel host:8091 */
-  </script>
-  <script src="./app.js" defer></script>
+<script src="./assets/app.js"></script>
 </body>
 </html>
